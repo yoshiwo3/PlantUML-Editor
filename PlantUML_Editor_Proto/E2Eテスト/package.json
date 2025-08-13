@@ -27,7 +27,6 @@
     "setup": "npx playwright install chromium firefox webkit msedge",
     "start:server": "cd .. && npx http-server -p 8086",
     "codegen": "node playwright-runner.cjs codegen",
-    
     "test:phase2": "node docker-test-runner.js docker enhanced chromium",
     "test:phase2:local": "node docker-test-runner.js local enhanced chromium",
     "test:phase2:all": "node docker-test-runner.js docker all chromium",
@@ -43,7 +42,18 @@
     "test:cp002": "npx playwright test critical-path-enhanced.spec.js --grep='CP-002'",
     "test:cp003": "npx playwright test critical-path-enhanced.spec.js --grep='CP-003'",
     "test:cp004": "npx playwright test critical-path-enhanced.spec.js --grep='CP-004'",
-    "test:cp005": "npx playwright test critical-path-enhanced.spec.js --grep='CP-005'"
+    "test:cp005": "npx playwright test critical-path-enhanced.spec.js --grep='CP-005'",
+    "phase2:all": "node docs/phase2/test-runner-phase2.js chromium all",
+    "phase2:sync": "node docs/phase2/test-runner-phase2.js chromium sync",
+    "phase2:flows": "node docs/phase2/test-runner-phase2.js chromium flows",
+    "phase2:performance": "node docs/phase2/test-runner-phase2.js chromium performance",
+    "phase2:firefox": "node docs/phase2/test-runner-phase2.js firefox all",
+    "phase2:webkit": "node docs/phase2/test-runner-phase2.js webkit all",
+    "phase2:edge": "node docs/phase2/test-runner-phase2.js msedge all",
+    "phase2:help": "node docs/phase2/test-runner-phase2.js --help",
+    "phase2:sync-test": "node docs/phase2/test-sync-functionality.js",
+    "phase2:flows-test": "node docs/phase2/test-complex-flows.js",
+    "phase2:performance-test": "node docs/phase2/test-performance-metrics.js"
   },
   "dependencies": {
     "playwright": "^1.48.0"

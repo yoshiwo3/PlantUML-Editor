@@ -78,7 +78,9 @@
       "Bash(npm install:*)",
       "Bash(docker:*)",
       "Bash(npm run test:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)"
     ],
     "deny": []
   }

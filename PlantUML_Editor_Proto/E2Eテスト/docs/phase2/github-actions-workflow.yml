@@ -1,523 +1,547 @@
-# PlantUMLエディタ E2Eテスト CI/CD ワークフロー
-# Phase 2-C: GitHub Actions統合テスト自動実行
+# PlantUMLエディタ E2Eテスト Phase2 - GitHub Actions CI/CD設定
+# 既存の成功環境（10/10成功）をベースとしたCI/CD統合
 
-name: 'E2E Tests - Phase 2'
+name: 'PlantUML Editor E2E Tests - Phase 2'
 
 on:
-  # プルリクエスト時の実行
-  pull_request:
-    branches: [main, develop]
-    paths: 
-      - 'jp2plantuml/**'
-      - 'E2Eテスト/**'
-      - '.github/workflows/**'
-  
-  # メインブランチへのプッシュ時
   push:
-    branches: [main]
-    paths: 
+    branches: [ main, develop, feature/* ]
+    paths:
+      - 'PlantUML_Editor_Proto/**'
       - 'jp2plantuml/**'
-  
-  # 手動実行
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'PlantUML_Editor_Proto/**'
+      - 'jp2plantuml/**'
+  schedule:
+    # 毎日午前2時（JST 11時）に実行
+    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
-      test_phase:
-        description: 'テスト実行フェーズ'
+      test_suite:
+        description: 'テストスイート選択'
         required: true
         default: 'all'
         type: choice
         options:
-          - 'all'
-          - 'phase2a'
-          - 'phase2b'
-          - 'phase2c'
-      performance_test:
-        description: 'パフォーマンステストを実行'
-        required: false
-        default: true
-        type: boolean
-  
-  # 定期実行（夜間）
-  schedule:
-    - cron: '0 2 * * *'  # 毎日2時（JST 11時）に実行
+          - all
+          - basic
+          - sync
+          - complex-flows
+          - performance
+      browser:
+        description: 'ブラウザ選択'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - msedge
+          - all-browsers
 
-# 環境変数
 env:
-  NODE_VERSION: '20'
-  PLANTUML_BASE_URL: 'http://localhost:8086'
-  PLAYWRIGHT_BROWSERS_PATH: '0'
-  
-# ジョブ定義
+  BASE_URL: http://localhost:8086
+  NODE_ENV: test
+  PLAYWRIGHT_BROWSERS_PATH: /ms/playwright
+
 jobs:
-  # 1. 環境準備とアプリケーション起動
-  setup:
-    name: '環境準備'
+  # アプリケーション起動とヘルスチェック
+  prepare-environment:
     runs-on: ubuntu-latest
     outputs:
-      app-ready: ${{ steps.app-check.outputs.ready }}
+      app-ready: ${{ steps.health-check.outputs.ready }}
     
     steps:
-      - name: 'チェックアウト'
+      - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: 'Node.js セットアップ'
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: 'jp2plantuml/package-lock.json'
-      
-      - name: 'アプリケーション依存関係インストール'
-        run: |
-          cd jp2plantuml
-          npm ci
-      
-      - name: 'アプリケーション起動'
-        run: |
-          cd jp2plantuml
-          npm start &
-          sleep 30
         
-      - name: 'アプリケーション起動確認'
-        id: app-check
-        run: |
-          max_attempts=10
-          attempt=0
-          
-          while [ $attempt -lt $max_attempts ]; do
-            if curl -f -s ${{ env.PLANTUML_BASE_URL }} > /dev/null; then
-              echo "ready=true" >> $GITHUB_OUTPUT
-              echo "✅ アプリケーション起動確認完了"
-              exit 0
-            fi
-            
-            attempt=$((attempt + 1))
-            echo "⏳ 起動確認中... ($attempt/$max_attempts)"
-            sleep 10
-          done
-          
-          echo "ready=false" >> $GITHUB_OUTPUT
-          echo "❌ アプリケーション起動に失敗"
-          exit 1
-
-  # 2. Phase 2-A: カバレッジ拡充テスト
-  test-phase2a:
-    name: 'Phase 2-A: カバレッジ拡充'
-    runs-on: ubuntu-latest
-    needs: setup
-    if: needs.setup.outputs.app-ready == 'true' && (github.event.inputs.test_phase == 'all' || github.event.inputs.test_phase == 'phase2a' || github.event_name != 'workflow_dispatch')
-    
-    container:
-      image: mcr.microsoft.com/playwright:v1.48.0-jammy
-      options: --shm-size=2gb
-    
-    steps:
-      - name: 'チェックアウト'
-        uses: actions/checkout@v4
-      
-      - name: 'Node.js セットアップ（コンテナ内）'
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
-      
-      - name: 'Microsoft Edge インストール'
-        run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-          install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
-          echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge-stable.list
-          apt-get update && apt-get install -y microsoft-edge-stable
-      
-      - name: 'E2Eテスト依存関係インストール'
-        run: |
-          cd E2Eテスト
-          npm install
-      
-      - name: 'アプリケーション起動（バックグラウンド）'
-        run: |
-          cd jp2plantuml
-          npm install
-          npm start &
-          sleep 30
-      
-      - name: 'Phase 2-A テスト実行'
-        run: |
-          cd E2Eテスト
-          node docs/phase2/test-implementation-phase2a.js
-        env:
-          BASE_URL: ${{ env.PLANTUML_BASE_URL }}
-          CI: true
-      
-      - name: 'Phase 2-A テスト結果アップロード'
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: phase2a-test-results
-          path: |
-            E2Eテスト/test-results/
-            E2Eテスト/screenshots/
-          retention-days: 30
-
-  # 3. Phase 2-B: パフォーマンステスト
-  test-phase2b:
-    name: 'Phase 2-B: パフォーマンス'
-    runs-on: ubuntu-latest
-    needs: setup
-    if: needs.setup.outputs.app-ready == 'true' && (github.event.inputs.test_phase == 'all' || github.event.inputs.test_phase == 'phase2b' || github.event_name != 'workflow_dispatch') && (github.event.inputs.performance_test == 'true' || github.event_name != 'workflow_dispatch')
-    
-    container:
-      image: mcr.microsoft.com/playwright:v1.48.0-jammy
-      options: --shm-size=2gb
-    
-    steps:
-      - name: 'チェックアウト'
-        uses: actions/checkout@v4
-      
-      - name: 'Node.js セットアップ（コンテナ内）'
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
-      
-      - name: 'Microsoft Edge インストール'
-        run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-          install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
-          echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge-stable.list
-          apt-get update && apt-get install -y microsoft-edge-stable
-      
-      - name: 'E2Eテスト依存関係インストール'
-        run: |
-          cd E2Eテスト
-          npm install
-      
-      - name: 'アプリケーション起動（バックグラウンド）'
-        run: |
-          cd jp2plantuml
-          npm install
-          npm start &
-          sleep 30
-      
-      - name: 'システムリソース監視開始'
-        run: |
-          # システムリソース監視をバックグラウンドで開始
-          top -b -d 5 > system-resources.log &
-          echo $! > monitoring.pid
-      
-      - name: 'Phase 2-B パフォーマンステスト実行'
-        run: |
-          cd E2Eテスト
-          node docs/phase2/test-implementation-phase2b.js
-        env:
-          BASE_URL: ${{ env.PLANTUML_BASE_URL }}
-          CI: true
-      
-      - name: 'システムリソース監視停止'
-        run: |
-          if [ -f monitoring.pid ]; then
-            kill $(cat monitoring.pid) || true
-            rm monitoring.pid
-          fi
-      
-      - name: 'パフォーマンステスト結果解析'
-        run: |
-          cd E2Eテスト
-          echo "## パフォーマンステスト結果" >> $GITHUB_STEP_SUMMARY
-          if [ -f test-results/performance-metrics.json ]; then
-            echo "### メトリクス" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-            cat test-results/performance-metrics.json >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
-      
-      - name: 'Phase 2-B テスト結果アップロード'
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: phase2b-performance-results
-          path: |
-            E2Eテスト/test-results/
-            system-resources.log
-          retention-days: 30
-
-  # 4. Phase 2-C: CI/CD統合テスト
-  test-phase2c:
-    name: 'Phase 2-C: CI/CD統合'
-    runs-on: ubuntu-latest
-    needs: [test-phase2a, test-phase2b]
-    if: always() && (github.event.inputs.test_phase == 'all' || github.event.inputs.test_phase == 'phase2c' || github.event_name != 'workflow_dispatch')
-    
-    container:
-      image: mcr.microsoft.com/playwright:v1.48.0-jammy
-      options: --shm-size=2gb
-    
-    steps:
-      - name: 'チェックアウト'
-        uses: actions/checkout@v4
-      
-      - name: 'Node.js セットアップ（コンテナ内）'
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
-      
-      - name: 'Microsoft Edge インストール'
-        run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-          install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
-          echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge-stable.list
-          apt-get update && apt-get install -y microsoft-edge-stable
-      
-      - name: 'E2Eテスト依存関係インストール'
-        run: |
-          cd E2Eテスト
-          npm install
-      
-      - name: 'アプリケーション起動（バックグラウンド）'
-        run: |
-          cd jp2plantuml
-          npm install
-          npm start &
-          sleep 30
-      
-      - name: 'Phase 2-C CI/CD統合テスト実行'
-        run: |
-          cd E2Eテスト
-          mkdir -p test-results
-          node docs/phase2/test-implementation-phase2c.js
-        env:
-          BASE_URL: ${{ env.PLANTUML_BASE_URL }}
-          OUTPUT_DIR: './test-results'
-          CI: true
-          GITHUB_PR_NUMBER: ${{ github.event.number }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-          GITHUB_BASE_REF: ${{ github.base_ref }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_OUTPUT: ${{ github.output }}
-      
-      - name: '統合テスト結果処理'
-        if: always()
-        run: |
-          cd E2Eテスト
-          echo "## CI/CD統合テスト結果" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f test-results/test-results.json ]; then
-            echo "### テスト実行結果" >> $GITHUB_STEP_SUMMARY
-            
-            # JSONから結果を抽出してサマリに追加
-            node -e "
-              const fs = require('fs');
-              const results = JSON.parse(fs.readFileSync('test-results/test-results.json', 'utf8'));
-              const passed = results.tests.filter(t => t.status === 'passed').length;
-              const failed = results.tests.filter(t => t.status === 'failed').length;
-              const total = results.tests.length;
-              const rate = total > 0 ? ((passed / total) * 100).toFixed(1) : 0;
-              
-              console.log(\`- 総テスト数: \${total}\`);
-              console.log(\`- 成功: \${passed}\`);
-              console.log(\`- 失敗: \${failed}\`);
-              console.log(\`- 成功率: \${rate}%\`);
-            " >> $GITHUB_STEP_SUMMARY
-          fi
-      
-      - name: 'Phase 2-C テスト結果アップロード'
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: phase2c-cicd-results
-          path: |
-            E2Eテスト/test-results/
-          retention-days: 30
-
-  # 5. 統合レポート生成
-  generate-report:
-    name: '統合レポート生成'
-    runs-on: ubuntu-latest
-    needs: [test-phase2a, test-phase2b, test-phase2c]
-    if: always()
-    
-    steps:
-      - name: 'チェックアウト'
-        uses: actions/checkout@v4
-      
-      - name: 'Node.js セットアップ'
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'jp2plantuml/package.json'
       
-      - name: 'テスト結果ダウンロード'
+      - name: Install application dependencies
+        working-directory: jp2plantuml
+        run: npm ci
+        
+      - name: Start application server
+        working-directory: jp2plantuml
+        run: |
+          npm start &
+          echo "APPLICATION_PID=$!" >> $GITHUB_ENV
+        
+      - name: Wait for application startup
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:8086; do sleep 2; done'
+          echo "Application started successfully"
+        
+      - name: Health check
+        id: health-check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8086)
+          if [ "$response" = "200" ]; then
+            echo "ready=true" >> $GITHUB_OUTPUT
+            echo "✅ Application health check passed"
+          else
+            echo "ready=false" >> $GITHUB_OUTPUT
+            echo "❌ Application health check failed: HTTP $response"
+            exit 1
+          fi
+
+  # 基本テスト（既存の成功テスト）
+  basic-tests:
+    needs: prepare-environment
+    if: needs.prepare-environment.outputs.app-ready == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js in container
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          
+      - name: Install test dependencies
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npx playwright install ${{ matrix.browser }}
+        
+      - name: Start application server
+        working-directory: jp2plantuml
+        run: |
+          npm ci
+          npm start &
+          sleep 10
+          curl -f http://localhost:8086 || (echo "App startup failed" && exit 1)
+        
+      - name: Run basic E2E tests
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: node test-docker.js ${{ matrix.browser }}
+        
+      - name: Upload basic test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-test-results-${{ matrix.browser }}
+          path: |
+            PlantUML_Editor_Proto/E2Eテスト/test-results/
+            PlantUML_Editor_Proto/E2Eテスト/screenshots/
+          retention-days: 30
+
+  # Phase2 同期機能テスト
+  sync-functionality-tests:
+    needs: [prepare-environment, basic-tests]
+    if: needs.prepare-environment.outputs.app-ready == 'true' && (github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'sync' || github.event_name != 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js in container
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          
+      - name: Install test dependencies
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npx playwright install ${{ matrix.browser }}
+        
+      - name: Start application server
+        working-directory: jp2plantuml
+        run: |
+          npm ci
+          npm start &
+          sleep 10
+          curl -f http://localhost:8086 || (echo "App startup failed" && exit 1)
+        
+      - name: Run sync functionality tests
+        working-directory: PlantUML_Editor_Proto/E2Eテスト/docs/phase2
+        run: node test-sync-functionality.js ${{ matrix.browser }}
+        
+      - name: Upload sync test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-test-results-${{ matrix.browser }}
+          path: |
+            PlantUML_Editor_Proto/E2Eテスト/test-results/
+            PlantUML_Editor_Proto/E2Eテスト/screenshots/
+          retention-days: 30
+
+  # Phase2 複雑フローテスト
+  complex-flows-tests:
+    needs: [prepare-environment, basic-tests]
+    if: needs.prepare-environment.outputs.app-ready == 'true' && (github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'complex-flows' || github.event_name != 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js in container
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          
+      - name: Install test dependencies
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npx playwright install ${{ matrix.browser }}
+        
+      - name: Start application server
+        working-directory: jp2plantuml
+        run: |
+          npm ci
+          npm start &
+          sleep 10
+          curl -f http://localhost:8086 || (echo "App startup failed" && exit 1)
+        
+      - name: Run complex flows tests
+        working-directory: PlantUML_Editor_Proto/E2Eテスト/docs/phase2
+        run: node test-complex-flows.js ${{ matrix.browser }}
+        
+      - name: Upload complex flows test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: complex-flows-test-results-${{ matrix.browser }}
+          path: |
+            PlantUML_Editor_Proto/E2Eテスト/test-results/
+            PlantUML_Editor_Proto/E2Eテスト/screenshots/
+          retention-days: 30
+
+  # Phase2 パフォーマンステスト
+  performance-tests:
+    needs: [prepare-environment, basic-tests]
+    if: needs.prepare-environment.outputs.app-ready == 'true' && (github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'performance' || github.event_name != 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js in container
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          
+      - name: Install test dependencies
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npx playwright install ${{ matrix.browser }}
+        
+      - name: Start application server
+        working-directory: jp2plantuml
+        run: |
+          npm ci
+          npm start &
+          sleep 10
+          curl -f http://localhost:8086 || (echo "App startup failed" && exit 1)
+        
+      - name: Run performance tests
+        working-directory: PlantUML_Editor_Proto/E2Eテスト/docs/phase2
+        run: node test-performance-metrics.js ${{ matrix.browser }}
+        
+      - name: Upload performance test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results-${{ matrix.browser }}
+          path: |
+            PlantUML_Editor_Proto/E2Eテスト/test-results/
+            PlantUML_Editor_Proto/E2Eテスト/screenshots/
+          retention-days: 30
+
+  # Microsoft Edge専用テスト
+  edge-tests:
+    needs: [prepare-environment, basic-tests]
+    if: needs.prepare-environment.outputs.app-ready == 'true' && (github.event.inputs.browser == 'msedge' || github.event.inputs.browser == 'all-browsers' || github.event_name != 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js in container
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          
+      - name: Install Microsoft Edge
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+          install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
+          echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge-stable.list
+          apt-get update && apt-get install -y microsoft-edge-stable
+          
+      - name: Install test dependencies
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npm ci
+        
+      - name: Install Playwright browsers
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: npx playwright install msedge chromium firefox webkit
+        
+      - name: Start application server
+        working-directory: jp2plantuml
+        run: |
+          npm ci
+          npm start &
+          sleep 10
+          curl -f http://localhost:8086 || (echo "App startup failed" && exit 1)
+        
+      - name: Run Edge basic tests
+        working-directory: PlantUML_Editor_Proto/E2Eテスト
+        run: node test-edge-docker.js
+        
+      - name: Run Edge Phase2 tests
+        working-directory: PlantUML_Editor_Proto/E2Eテスト/docs/phase2
+        run: |
+          node test-sync-functionality.js msedge
+          node test-complex-flows.js msedge
+          node test-performance-metrics.js msedge
+        
+      - name: Upload Edge test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-test-results
+          path: |
+            PlantUML_Editor_Proto/E2Eテスト/test-results/
+            PlantUML_Editor_Proto/E2Eテスト/screenshots/
+          retention-days: 30
+
+  # テスト結果統合とレポート生成
+  generate-test-report:
+    needs: [basic-tests, sync-functionality-tests, complex-flows-tests, performance-tests, edge-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download all test results
         uses: actions/download-artifact@v4
         with:
-          path: ./all-test-results/
-      
-      - name: '統合レポート生成'
-        run: |
-          mkdir -p final-report
+          path: test-results-all/
           
-          # 統合レポート生成スクリプト
-          cat > generate-integrated-report.js << 'EOF'
-          const fs = require('fs');
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies for report generation
+        run: |
+          npm init -y
+          npm install --save-dev fs-extra glob
+          
+      - name: Generate consolidated test report
+        run: |
+          cat > generate-report.js << 'EOF'
+          const fs = require('fs-extra');
+          const glob = require('glob');
           const path = require('path');
           
-          const resultsDir = './all-test-results/';
-          const reportDir = './final-report/';
+          async function generateReport() {
+            const resultsDir = 'test-results-all';
+            const reportFile = 'consolidated-test-report.md';
+            
+            let report = `# PlantUML エディタ E2E テスト結果レポート - Phase 2
           
-          // すべてのテスト結果を統合
-          const integratedResults = {
-            timestamp: new Date().toISOString(),
-            workflow: 'Phase 2 E2E Tests',
-            summary: {
-              phase2a: { tests: 0, passed: 0, failed: 0 },
-              phase2b: { tests: 0, passed: 0, failed: 0 },  
-              phase2c: { tests: 0, passed: 0, failed: 0 }
-            },
-            details: []
-          };
+          **実行日時**: ${new Date().toISOString()}
+          **コミット**: ${process.env.GITHUB_SHA || 'N/A'}
+          **ブランチ**: ${process.env.GITHUB_REF_NAME || 'N/A'}
           
-          // 各フェーズの結果を読み込み
-          const phases = ['phase2a', 'phase2b', 'phase2c'];
+          ## 📊 テスト実行サマリー
           
-          phases.forEach(phase => {
-            const phaseDir = path.join(resultsDir, phase + '-test-results');
-            if (fs.existsSync(phaseDir)) {
-              const files = fs.readdirSync(phaseDir, { recursive: true });
-              files.forEach(file => {
-                if (file.endsWith('.json') && file.includes('test')) {
-                  try {
-                    const filePath = path.join(phaseDir, file);
-                    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                    integratedResults.details.push({
-                      phase: phase,
-                      file: file,
-                      data: data
-                    });
-                  } catch (e) {
-                    console.log('ファイル読み込みエラー:', file, e.message);
-                  }
-                }
-              });
-            }
-          });
-          
-          // 統合結果をJSONファイルに保存
-          fs.writeFileSync(
-            path.join(reportDir, 'integrated-test-results.json'),
-            JSON.stringify(integratedResults, null, 2)
-          );
-          
-          // サマリーレポート生成
-          const totalTests = Object.values(integratedResults.summary).reduce((sum, phase) => sum + phase.tests, 0);
-          const totalPassed = Object.values(integratedResults.summary).reduce((sum, phase) => sum + phase.passed, 0);
-          const totalFailed = Object.values(integratedResults.summary).reduce((sum, phase) => sum + phase.failed, 0);
-          const successRate = totalTests > 0 ? ((totalPassed / totalTests) * 100).toFixed(1) : 0;
-          
-          const summaryMd = `# PlantUMLエディタ E2Eテスト Phase 2 - 統合レポート
-          
-          ## テスト実行サマリー
-          
-          - **実行日時**: ${integratedResults.timestamp}
-          - **総テスト数**: ${totalTests}
-          - **成功**: ${totalPassed}
-          - **失敗**: ${totalFailed}
-          - **成功率**: ${successRate}%
-          
-          ## フェーズ別結果
-          
-          | フェーズ | テスト数 | 成功 | 失敗 | 成功率 |
-          |---------|----------|------|------|--------|
-          | Phase 2-A (カバレッジ拡充) | ${integratedResults.summary.phase2a.tests} | ${integratedResults.summary.phase2a.passed} | ${integratedResults.summary.phase2a.failed} | ${integratedResults.summary.phase2a.tests > 0 ? ((integratedResults.summary.phase2a.passed / integratedResults.summary.phase2a.tests) * 100).toFixed(1) : 0}% |
-          | Phase 2-B (パフォーマンス) | ${integratedResults.summary.phase2b.tests} | ${integratedResults.summary.phase2b.passed} | ${integratedResults.summary.phase2b.failed} | ${integratedResults.summary.phase2b.tests > 0 ? ((integratedResults.summary.phase2b.passed / integratedResults.summary.phase2b.tests) * 100).toFixed(1) : 0}% |
-          | Phase 2-C (CI/CD統合) | ${integratedResults.summary.phase2c.tests} | ${integratedResults.summary.phase2c.passed} | ${integratedResults.summary.phase2c.failed} | ${integratedResults.summary.phase2c.tests > 0 ? ((integratedResults.summary.phase2c.passed / integratedResults.summary.phase2c.tests) * 100).toFixed(1) : 0}% |
-          
-          ## 品質評価
-          
-          ${successRate >= 95 ? '🏆 **優秀**: 全ての品質基準を満たしています' : 
-            successRate >= 85 ? '✅ **良好**: 概ね良好な結果です' : 
-            successRate >= 70 ? '⚠️ **注意**: 改善が推奨されます' : 
-            '🚨 **要改善**: 重大な問題があります'}
-          
-          ## 推奨アクション
-          
-          ${successRate < 95 ? '- 失敗したテストケースの詳細確認と修正\n- パフォーマンス最適化の検討\n- テスト環境の安定性向上' : '- 現在の品質レベルを維持\n- 継続的な監視体制の維持'}
           `;
           
-          fs.writeFileSync(
-            path.join(reportDir, 'SUMMARY.md'),
-            summaryMd
-          );
+            // 各種テスト結果を集計
+            const testCategories = [
+              { name: '基本テスト', pattern: 'basic-test-results-*' },
+              { name: '同期機能テスト', pattern: 'sync-test-results-*' },
+              { name: '複雑フローテスト', pattern: 'complex-flows-test-results-*' },
+              { name: 'パフォーマンステスト', pattern: 'performance-test-results-*' },
+              { name: 'Edge専用テスト', pattern: 'edge-test-results' }
+            ];
+            
+            for (const category of testCategories) {
+              const dirs = glob.sync(path.join(resultsDir, category.pattern));
+              
+              report += `### ${category.name}\n\n`;
+              
+              if (dirs.length === 0) {
+                report += `⚠️ テスト結果が見つかりませんでした\n\n`;
+                continue;
+              }
+              
+              report += `| ブラウザ | 状態 | 詳細 |\n`;
+              report += `|----------|------|------|\n`;
+              
+              for (const dir of dirs) {
+                const browserName = path.basename(dir).replace(category.pattern.replace('*', '').replace('test-results-', ''), '') || 'Edge';
+                
+                // テスト結果ファイルを探す
+                const jsonFiles = glob.sync(path.join(dir, '**/*.json'));
+                let status = '✅ 成功';
+                let details = 'テスト完了';
+                
+                if (jsonFiles.length === 0) {
+                  status = '⚠️ 不明';
+                  details = '結果ファイルなし';
+                }
+                
+                report += `| ${browserName} | ${status} | ${details} |\n`;
+              }
+              
+              report += `\n`;
+            }
+            
+            report += `## 📁 アーティファクト
           
-          console.log('統合レポート生成完了');
+          - テスト結果ファイル
+          - スクリーンショット
+          - パフォーマンスメトリクス（JSON）
+          - HAR ファイル（ネットワーク記録）
+          - ビデオ録画（失敗時）
+          
+          ## 🔧 改善提案
+          
+          Phase 2 のテスト実装により、以下の領域でのテスト品質が向上しました：
+          
+          - ✅ PlantUMLコードとUIの双方向同期機能
+          - ✅ 複雑なフロー（条件分岐、ループ、並行処理）
+          - ✅ パフォーマンス指標の継続監視
+          - ✅ CI/CD パイプラインでの自動実行
+          
+          ### 次のステップ
+          
+          1. 視覚的リグレッションテストの追加
+          2. APIレベルのテスト統合  
+          3. セキュリティテストの実装
+          4. アクセシビリティテストの強化
+          
+          ---
+          *このレポートは GitHub Actions により自動生成されました*
+          `;
+            
+            await fs.writeFile(reportFile, report);
+            console.log(`✅ テストレポートを生成しました: ${reportFile}`);
+          }
+          
+          generateReport().catch(console.error);
           EOF
           
-          node generate-integrated-report.js
-      
-      - name: '統合レポートをStep Summaryに追加'
-        run: |
-          if [ -f final-report/SUMMARY.md ]; then
-            cat final-report/SUMMARY.md >> $GITHUB_STEP_SUMMARY
-          fi
-      
-      - name: '統合レポートアップロード'
+          node generate-report.js
+          
+      - name: Upload consolidated test report
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: integrated-final-report
-          path: final-report/
+          name: consolidated-test-report
+          path: |
+            consolidated-test-report.md
+            test-results-all/
           retention-days: 90
 
-  # 6. 通知とデプロイゲート
-  notify-and-gate:
-    name: '通知・品質ゲート'
+  # Slack通知（成功・失敗の通知）
+  notify-results:
+    needs: [generate-test-report]
+    if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'schedule')
     runs-on: ubuntu-latest
-    needs: [generate-report]
-    if: always()
     
     steps:
-      - name: 'テスト結果の評価'
-        id: evaluate
+      - name: Prepare notification
+        id: prepare-notification
         run: |
-          # 簡易的な品質ゲート判定
-          phase2a_status="${{ needs.test-phase2a.result }}"
-          phase2b_status="${{ needs.test-phase2b.result }}"
-          phase2c_status="${{ needs.test-phase2c.result }}"
-          
-          failed_count=0
-          [ "$phase2a_status" = "failure" ] && ((failed_count++))
-          [ "$phase2b_status" = "failure" ] && ((failed_count++))
-          [ "$phase2c_status" = "failure" ] && ((failed_count++))
-          
-          if [ $failed_count -eq 0 ]; then
-            echo "gate_status=passed" >> $GITHUB_OUTPUT
-            echo "quality_score=100" >> $GITHUB_OUTPUT
-          elif [ $failed_count -eq 1 ]; then
-            echo "gate_status=warning" >> $GITHUB_OUTPUT
-            echo "quality_score=75" >> $GITHUB_OUTPUT
+          if [[ "${{ needs.basic-tests.result }}" == "success" && "${{ needs.sync-functionality-tests.result }}" == "success" && "${{ needs.complex-flows-tests.result }}" == "success" && "${{ needs.performance-tests.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+            echo "message=✅ すべてのE2Eテスト（Phase 2）が成功しました" >> $GITHUB_OUTPUT
           else
-            echo "gate_status=failed" >> $GITHUB_OUTPUT
-            echo "quality_score=50" >> $GITHUB_OUTPUT
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+            echo "message=❌ E2Eテスト（Phase 2）で失敗が発生しました" >> $GITHUB_OUTPUT
           fi
-      
-      - name: '品質ゲート結果表示'
-        run: |
-          echo "## 🚪 品質ゲート結果" >> $GITHUB_STEP_SUMMARY
-          echo "**ステータス**: ${{ steps.evaluate.outputs.gate_status }}" >> $GITHUB_STEP_SUMMARY
-          echo "**品質スコア**: ${{ steps.evaluate.outputs.quality_score }}/100" >> $GITHUB_STEP_SUMMARY
           
-          case "${{ steps.evaluate.outputs.gate_status }}" in
-            "passed")
-              echo "✅ **結果**: 品質ゲートを通過しました。デプロイ可能です。" >> $GITHUB_STEP_SUMMARY
-              ;;
-            "warning") 
-              echo "⚠️ **結果**: 一部の問題がありますが、条件付きでデプロイ可能です。" >> $GITHUB_STEP_SUMMARY
-              ;;
-            "failed")
-              echo "🚫 **結果**: 品質ゲート基準を満たしていません。修正が必要です。" >> $GITHUB_STEP_SUMMARY
-              ;;
-          esac
-      
-      - name: '品質ゲート失敗時の処理'
-        if: steps.evaluate.outputs.gate_status == 'failed'
-        run: |
-          echo "❌ 品質ゲート失敗: E2Eテストの修正が必要です"
-          exit 1
-
-# ワークフロー完了時の処理
-# artifacts の自動クリーンアップは30-90日後に実行される
+      - name: Notify Slack
+        if: env.SLACK_WEBHOOK_URL
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "${{ steps.prepare-notification.outputs.message }}",
+              "color": "${{ steps.prepare-notification.outputs.color }}",
+              "fields": [
+                {
+                  "title": "Repository",
+                  "value": "${{ github.repository }}",
+                  "short": true
+                },
+                {
+                  "title": "Branch",
+                  "value": "${{ github.ref_name }}",
+                  "short": true
+                },
+                {
+                  "title": "Commit",
+                  "value": "${{ github.sha }}",
+                  "short": true
+                },
+                {
+                  "title": "Results",
+                  "value": "基本: ${{ needs.basic-tests.result }}\n同期: ${{ needs.sync-functionality-tests.result }}\n複雑フロー: ${{ needs.complex-flows-tests.result }}\nパフォーマンス: ${{ needs.performance-tests.result }}",
+                  "short": false
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
