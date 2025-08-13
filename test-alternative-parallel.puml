@@ -1,0 +1,20 @@
+@startuml
+actor 顧客
+participant システム
+participant 在庫管理
+participant 決済処理
+
+顧客 -> システム : 注文送信
+
+note over システム, 在庫管理 : 並行処理開始
+システム -> 在庫管理 : 在庫確認
+在庫管理 --> システム : 在庫OK
+
+note over システム, 決済処理 : 同時実行
+システム -> 決済処理 : 決済実行
+決済処理 --> システム : 決済完了
+
+note over システム : 並行処理完了
+
+システム --> 顧客 : 注文完了通知
+@enduml

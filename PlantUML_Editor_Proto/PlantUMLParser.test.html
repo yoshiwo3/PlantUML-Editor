@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantUMLParser Unit Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #666;
+            margin-top: 30px;
+        }
+        .test-suite {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #ccc;
+        }
+        .test-case.pass {
+            border-left-color: #4CAF50;
+            background-color: #f0fff0;
+        }
+        .test-case.fail {
+            border-left-color: #f44336;
+            background-color: #fff0f0;
+        }
+        .test-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .test-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .error-message {
+            color: #f44336;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .summary {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary.all-pass {
+            border: 2px solid #4CAF50;
+        }
+        .summary.has-fail {
+            border: 2px solid #f44336;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .stat {
+            padding: 5px 10px;
+            border-radius: 4px;
+            background: #f0f0f0;
+        }
+        .stat.pass {
+            background: #4CAF50;
+            color: white;
+        }
+        .stat.fail {
+            background: #f44336;
+            color: white;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85em;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 PlantUMLParser ユニットテスト</h1>
+    
+    <div class="summary" id="summary">
+        <h2>テスト結果サマリー</h2>
+        <div id="summary-content">テスト実行待ち...</div>
+    </div>
+    
+    <div>
+        <button onclick="runAllTests()">全テスト実行</button>
+        <button onclick="runDebugMode()">デバッグモードで実行</button>
+        <button onclick="clearResults()">結果クリア</button>
+    </div>
+    
+    <div id="test-results"></div>
+
+    <script src="PlantUMLParser.js"></script>
+    <script>
+        // テストケース定義
+        const testSuites = {
+            '日本語アクター名の処理': [
+                {
+                    name: 'ダブルクォート付き日本語アクター',
+                    code: `@startuml
+actor "顧客"
+participant "ECサイト"
+"顧客" -> "ECサイト": 注文
+@enduml`,
+                    test: (result) => {
+                        return result.actors.includes('顧客') && 
+                               result.actors.includes('ECサイト') &&
+                               result.actions.length === 1 &&
+                               result.actions[0].from === '顧客' &&
+                               result.actions[0].to === 'ECサイト';
+                    }
+                },
+                {
+                    name: 'シングルクォート付き日本語アクター',
+                    code: `@startuml
+actor '顧客'
+participant 'ECサイト'
+'顧客' -> 'ECサイト': 注文
+@enduml`,
+                    test: (result) => {
+                        return result.actors.includes('顧客') && 
+                               result.actors.includes('ECサイト');
+                    }
+                },
+                {
+                    name: 'バックティック付き日本語アクター',
+                    code: `@startuml
+actor \`顧客\`
+participant \`ECサイト\`
+\`顧客\` -> \`ECサイト\`: 注文
+@enduml`,
+                    test: (result) => {
+                        return result.actors.includes('顧客') && 
+                               result.actors.includes('ECサイト');
+                    }
+                },
+                {
+                    name: 'クォートなし日本語アクター',
+                    code: `@startuml
+actor 顧客
+participant ECサイト
+顧客 -> ECサイト: 注文
+@enduml`,
+                    test: (result) => {
+                        return result.actors.includes('顧客') && 
+                               result.actors.includes('ECサイト');
+                    }
+                },
+                {
+                    name: 'エイリアス付き日本語アクター',
+                    code: `@startuml
+actor "顧客" as Customer
+participant "ECサイト" as EC
+Customer -> EC: 注文
+@enduml`,
+                    test: (result) => {
+                        return result.actors.includes('顧客') && 
+                               result.actors.includes('ECサイト') &&
+                               result.actions[0].from === '顧客' &&
+                               result.actions[0].to === 'ECサイト';
+                    }
+                }
+            ],
+            'メッセージパターンの処理': [
+                {
+                    name: '同期メッセージ',
+                    code: `@startuml
+actor A
+actor B
+A -> B: 同期メッセージ
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].async === false;
+                    }
+                },
+                {
+                    name: '非同期メッセージ（破線）',
+                    code: `@startuml
+actor A
+actor B
+A --> B: 非同期メッセージ
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].async === true;
+                    }
+                },
+                {
+                    name: '点線メッセージ',
+                    code: `@startuml
+actor A
+actor B
+A ..> B: 点線メッセージ
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].dotted === true;
+                    }
+                },
+                {
+                    name: 'リターンメッセージ',
+                    code: `@startuml
+actor A
+actor B
+A <- B: リターン
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].return === true;
+                    }
+                },
+                {
+                    name: '未確定メッセージ（？付き）',
+                    code: `@startuml
+actor A
+actor B
+A -> B: 処理？
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].uncertain === true &&
+                               result.actions[0].text === '処理';
+                    }
+                }
+            ],
+            '構造制御の処理': [
+                {
+                    name: 'ループ構造',
+                    code: `@startuml
+actor A
+actor B
+loop 3回繰り返し
+    A -> B: 処理
+end
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].type === 'loop' &&
+                               result.actions[0].condition === '3回繰り返し' &&
+                               result.actions[0].actions.length === 1;
+                    }
+                },
+                {
+                    name: '条件分岐（alt）',
+                    code: `@startuml
+actor A
+actor B
+alt 条件1
+    A -> B: 処理1
+else 条件2
+    A -> B: 処理2
+end
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].type === 'condition' &&
+                               result.actions[0].conditionType === 'alt' &&
+                               result.actions[0].trueBranch.length === 1 &&
+                               result.actions[0].falseBranch.length === 1;
+                    }
+                },
+                {
+                    name: 'オプション（opt）',
+                    code: `@startuml
+actor A
+actor B
+opt 条件
+    A -> B: 処理
+end
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].type === 'condition' &&
+                               result.actions[0].conditionType === 'opt';
+                    }
+                },
+                {
+                    name: '並行処理（par）',
+                    code: `@startuml
+actor A
+actor B
+actor C
+par
+    A -> B: 処理1
+else
+    A -> C: 処理2
+end
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].type === 'parallel' &&
+                               result.actions[0].branches.length === 2;
+                    }
+                },
+                {
+                    name: 'グループ',
+                    code: `@startuml
+actor A
+actor B
+group 認証フロー
+    A -> B: ログイン
+    B -> A: トークン
+end
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].type === 'group' &&
+                               result.actions[0].label === '認証フロー' &&
+                               result.actions[0].actions.length === 2;
+                    }
+                }
+            ],
+            'その他の要素': [
+                {
+                    name: 'タイトル',
+                    code: `@startuml
+title 業務フロー図
+actor A
+@enduml`,
+                    test: (result) => {
+                        return result.title === '業務フロー図';
+                    }
+                },
+                {
+                    name: 'ノート',
+                    code: `@startuml
+actor A
+note right of A: メモ
+@enduml`,
+                    test: (result) => {
+                        return result.notes && 
+                               result.notes[0].position === 'right' &&
+                               result.notes[0].text === 'メモ';
+                    }
+                },
+                {
+                    name: 'アクティベーション',
+                    code: `@startuml
+actor A
+activate A
+deactivate A
+@enduml`,
+                    test: (result) => {
+                        return result.activations && 
+                               result.activations['A'] === false;
+                    }
+                },
+                {
+                    name: '自動番号',
+                    code: `@startuml
+autonumber
+actor A
+actor B
+A -> B: メッセージ1
+A -> B: メッセージ2
+@enduml`,
+                    test: (result) => {
+                        return result.autoNumber === true &&
+                               result.actions[0].number === 1 &&
+                               result.actions[1].number === 2;
+                    }
+                },
+                {
+                    name: '区切り線',
+                    code: `@startuml
+actor A
+== 初期化フェーズ ==
+@enduml`,
+                    test: (result) => {
+                        return result.actions[0].type === 'divider' &&
+                               result.actions[0].text === '初期化フェーズ';
+                    }
+                }
+            ],
+            'エラーハンドリング': [
+                {
+                    name: '空のコード',
+                    code: '',
+                    test: (result) => {
+                        return result.isFallback === true;
+                    }
+                },
+                {
+                    name: '@startumlなし',
+                    code: 'actor A',
+                    test: (result) => {
+                        return result.hasValidStructure === false;
+                    }
+                },
+                {
+                    name: '@endumlなし',
+                    code: '@startuml\nactor A',
+                    test: (result) => {
+                        return result.hasValidStructure === false;
+                    }
+                },
+                {
+                    name: '不正な構文',
+                    code: '@startuml\nこれは不正な構文です\n@enduml',
+                    test: (result) => {
+                        return result.actors.length === 0 && 
+                               result.actions.length === 0;
+                    }
+                }
+            ],
+            '複雑なシナリオ': [
+                {
+                    name: 'EC注文フロー完全版',
+                    code: `@startuml
+title EC注文フロー
+
+actor "顧客"
+participant "ECサイト"
+participant "在庫システム"
+participant "決済サービス"
+actor "配送業者"
+
+"顧客" -> "ECサイト": 商品を注文
+"ECサイト" -> "在庫システム": 在庫確認
+
+alt 在庫あり
+    "在庫システム" --> "ECサイト": 在庫OK
+    "ECサイト" -> "決済サービス": 決済処理
+    
+    alt 決済成功
+        "決済サービス" --> "ECサイト": 決済完了
+        par
+            "ECサイト" -> "配送業者": 配送依頼
+        else
+            "ECサイト" -> "顧客": 注文確定通知
+        end
+    else 決済失敗
+        "決済サービス" --> "ECサイト": 決済エラー
+        "ECサイト" -> "顧客": 注文失敗通知
+    end
+else 在庫なし
+    "在庫システム" --> "ECサイト": 在庫なし
+    "ECサイト" -> "顧客": 在庫切れ通知
+end
+
+@enduml`,
+                    test: (result) => {
+                        return result.actors.length === 5 &&
+                               result.title === 'EC注文フロー' &&
+                               result.hasValidStructure === true;
+                    }
+                }
+            ]
+        };
+
+        // テストランナー
+        let parser;
+        
+        function runAllTests(debugMode = false) {
+            parser = new PlantUMLParser({ debugMode });
+            const results = { total: 0, passed: 0, failed: 0, suites: {} };
+            const container = document.getElementById('test-results');
+            container.innerHTML = '';
+            
+            for (const [suiteName, tests] of Object.entries(testSuites)) {
+                const suiteDiv = document.createElement('div');
+                suiteDiv.className = 'test-suite';
+                suiteDiv.innerHTML = `<h2>${suiteName}</h2>`;
+                
+                const suiteResults = { passed: 0, failed: 0 };
+                
+                for (const test of tests) {
+                    results.total++;
+                    const testDiv = document.createElement('div');
+                    
+                    try {
+                        const parseResult = parser.safeParse(test.code);
+                        const passed = test.test(parseResult);
+                        
+                        if (passed) {
+                            results.passed++;
+                            suiteResults.passed++;
+                            testDiv.className = 'test-case pass';
+                            testDiv.innerHTML = `
+                                <div class="test-title">✅ ${test.name}</div>
+                                <div class="test-details">成功</div>
+                            `;
+                        } else {
+                            results.failed++;
+                            suiteResults.failed++;
+                            testDiv.className = 'test-case fail';
+                            testDiv.innerHTML = `
+                                <div class="test-title">❌ ${test.name}</div>
+                                <div class="error-message">テスト失敗</div>
+                                <details>
+                                    <summary>詳細</summary>
+                                    <pre>コード:\n${test.code}\n\n結果:\n${JSON.stringify(parseResult, null, 2)}</pre>
+                                </details>
+                            `;
+                        }
+                    } catch (error) {
+                        results.failed++;
+                        suiteResults.failed++;
+                        testDiv.className = 'test-case fail';
+                        testDiv.innerHTML = `
+                            <div class="test-title">❌ ${test.name}</div>
+                            <div class="error-message">エラー: ${error.message}</div>
+                            <details>
+                                <summary>スタックトレース</summary>
+                                <pre>${error.stack}</pre>
+                            </details>
+                        `;
+                    }
+                    
+                    suiteDiv.appendChild(testDiv);
+                }
+                
+                results.suites[suiteName] = suiteResults;
+                container.appendChild(suiteDiv);
+            }
+            
+            updateSummary(results);
+        }
+        
+        function updateSummary(results) {
+            const summaryDiv = document.getElementById('summary');
+            const allPass = results.failed === 0;
+            summaryDiv.className = allPass ? 'summary all-pass' : 'summary has-fail';
+            
+            const percentage = Math.round((results.passed / results.total) * 100);
+            
+            document.getElementById('summary-content').innerHTML = `
+                <div style="font-size: 1.2em; margin-bottom: 10px;">
+                    ${allPass ? '🎉 すべてのテストが成功しました！' : '⚠️ 一部のテストが失敗しました'}
+                </div>
+                <div class="stats">
+                    <div class="stat">合計: ${results.total}件</div>
+                    <div class="stat pass">成功: ${results.passed}件</div>
+                    <div class="stat fail">失敗: ${results.failed}件</div>
+                    <div class="stat">成功率: ${percentage}%</div>
+                </div>
+                <h3 style="margin-top: 20px;">テストスイート別結果</h3>
+                <ul>
+                    ${Object.entries(results.suites).map(([name, suite]) => 
+                        `<li>${name}: ${suite.passed}/${suite.passed + suite.failed} 成功</li>`
+                    ).join('')}
+                </ul>
+            `;
+        }
+        
+        function runDebugMode() {
+            localStorage.setItem('debug_parse', 'true');
+            runAllTests(true);
+        }
+        
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('summary-content').innerHTML = 'テスト実行待ち...';
+        }
+        
+        // ページ読み込み時に自動実行
+        window.addEventListener('DOMContentLoaded', () => {
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

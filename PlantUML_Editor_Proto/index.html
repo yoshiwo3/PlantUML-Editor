@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantUML変換エディター</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <h1>🔄 PlantUML変換エディター</h1>
+            <div class="header-actions">
+                <button class="btn-clear" title="すべてクリア">🗑️ クリア</button>
+                <button class="btn-export-drawio" title="draw.ioで開く">🔷 draw.io</button>
+                <button class="btn-preset">📋 プリセット</button>
+                <button class="btn-settings">⚙️ 設定</button>
+                <button class="btn-help">❓ ヘルプ</button>
+                <button class="btn-glossary" title="技術用語説明">📖 用語説明</button>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <!-- 左パネル: エディターモード -->
+            <section class="editor-panel">
+                <!-- モード切替タブ -->
+                <div class="mode-tabs">
+                    <button class="tab-btn active" data-mode="actor-action">
+                        アクター＋処理
+                    </button>
+                    <button class="tab-btn" data-mode="pattern">
+                        パターン選択
+                    </button>
+                </div>
+
+                <!-- アクター＋処理モード -->
+                <div id="actor-action-mode" class="mode-content active">
+                    <!-- Step 1: アクター選択 -->
+                    <div class="editor-section">
+                        <h3>Step 1: アクターを選択</h3>
+                        <div class="actor-grid">
+                            <button class="actor-btn" data-actor="顧客">
+                                <span class="actor-icon">👤</span>
+                                <span>顧客</span>
+                            </button>
+                            <button class="actor-btn" data-actor="管理者">
+                                <span class="actor-icon">👨‍💼</span>
+                                <span>管理者</span>
+                            </button>
+                            <button class="actor-btn" data-actor="ECサイト">
+                                <span class="actor-icon">🛒</span>
+                                <span>ECサイト</span>
+                            </button>
+                            <button class="actor-btn" data-actor="在庫システム">
+                                <span class="actor-icon">📦</span>
+                                <span>在庫システム</span>
+                            </button>
+                            <button class="actor-btn" data-actor="決済サービス">
+                                <span class="actor-icon">💳</span>
+                                <span>決済サービス</span>
+                            </button>
+                            <button class="actor-btn" data-actor="配送業者">
+                                <span class="actor-icon">🚚</span>
+                                <span>配送業者</span>
+                            </button>
+                            <button class="actor-btn add-custom">
+                                <span class="actor-icon">➕</span>
+                                <span>追加</span>
+                            </button>
+                        </div>
+                        
+                        <!-- 選択中のアクター表示 -->
+                        <div class="selected-actors">
+                            <h4>選択中のアクター:</h4>
+                            <div class="actor-chips">
+                                <!-- 動的に追加される -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: 処理入力 -->
+                    <div class="editor-section">
+                        <h3>Step 2: 処理を入力</h3>
+                        
+                        <!-- 処理タイプ選択タブ -->
+                        <div class="action-type-tabs">
+                            <button class="action-type-btn active" data-type="message">
+                                <span>📨</span> メッセージ
+                            </button>
+                            <button class="action-type-btn" data-type="condition">
+                                <span>🔀</span> 条件分岐
+                            </button>
+                            <button class="action-type-btn" data-type="loop">
+                                <span>🔁</span> ループ
+                            </button>
+                            <button class="action-type-btn" data-type="parallel">
+                                <span>⚡</span> 並行処理
+                            </button>
+                        </div>
+
+                        <!-- メッセージ入力（デフォルト） -->
+                        <div class="action-builder" id="message-builder">
+                            <div class="action-row">
+                                <select id="from-actor" class="select-actor">
+                                    <option value="">送信元を選択</option>
+                                </select>
+                                <span class="arrow">→</span>
+                                <select id="to-actor" class="select-actor">
+                                    <option value="">送信先を選択</option>
+                                </select>
+                            </div>
+                            <div class="action-input-row">
+                                <input type="text" 
+                                       id="action-text" 
+                                       class="action-input"
+                                       placeholder="処理内容を入力 (例: 見積依頼を送る)">
+                                <div class="action-options">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="is-uncertain">
+                                        <span>未確定 (？)</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="is-async">
+                                        <span>非同期 (-->>)</span>
+                                    </label>
+                                </div>
+                                <button class="btn-add-action">➕ 追加</button>
+                            </div>
+                        </div>
+
+                        <!-- 条件分岐入力 -->
+                        <div class="action-builder hidden" id="condition-builder">
+                            <div class="condition-setup">
+                                <div class="condition-row">
+                                    <label>条件タイプ:</label>
+                                    <select id="condition-type" class="condition-select">
+                                        <option value="alt">分岐 (if-else)</option>
+                                        <option value="opt">オプション (if)</option>
+                                    </select>
+                                </div>
+                                <div class="condition-row">
+                                    <label>条件名:</label>
+                                    <input type="text" id="condition-name" class="condition-input" 
+                                           placeholder="例: 在庫あり">
+                                </div>
+                                <div class="condition-branches">
+                                    <div class="branch-section">
+                                        <h5>条件が真の場合:</h5>
+                                        <div class="branch-actions" id="true-branch">
+                                            <button class="btn-add-branch-action" data-branch="true">
+                                                ➕ アクション追加
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="branch-section" id="false-branch-section">
+                                        <h5>条件が偽の場合:</h5>
+                                        <div class="branch-actions" id="false-branch">
+                                            <button class="btn-add-branch-action" data-branch="false">
+                                                ➕ アクション追加
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn-add-condition">✅ 条件分岐を追加</button>
+                            </div>
+                        </div>
+
+                        <!-- ループ入力 -->
+                        <div class="action-builder hidden" id="loop-builder">
+                            <div class="loop-setup">
+                                <div class="loop-row">
+                                    <label>ループ条件:</label>
+                                    <input type="text" id="loop-condition" class="loop-input" 
+                                           placeholder="例: 全商品を処理するまで">
+                                </div>
+                                <div class="loop-actions">
+                                    <h5>ループ内の処理:</h5>
+                                    <div class="loop-actions-list" id="loop-actions">
+                                        <button class="btn-add-loop-action">
+                                            ➕ アクション追加
+                                        </button>
+                                    </div>
+                                </div>
+                                <button class="btn-add-loop">✅ ループを追加</button>
+                            </div>
+                        </div>
+
+                        <!-- 並行処理入力 -->
+                        <div class="action-builder hidden" id="parallel-builder">
+                            <div class="parallel-setup">
+                                <div class="parallel-branches">
+                                    <div class="parallel-branch" data-branch="1">
+                                        <h5>並行処理 1:</h5>
+                                        <div class="parallel-actions" id="parallel-1">
+                                            <button class="btn-add-parallel-action" data-branch="1">
+                                                ➕ アクション追加
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="parallel-branch" data-branch="2">
+                                        <h5>並行処理 2:</h5>
+                                        <div class="parallel-actions" id="parallel-2">
+                                            <button class="btn-add-parallel-action" data-branch="2">
+                                                ➕ アクション追加
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn-add-parallel-branch">➕ 並行処理を追加</button>
+                                <button class="btn-add-parallel">✅ 並行処理を追加</button>
+                            </div>
+                        </div>
+
+                        <!-- 処理リスト -->
+                        <div class="action-list">
+                            <h4>処理フロー:</h4>
+                            <div class="action-items">
+                                <!-- 動的に追加される -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- パターン選択モード -->
+                <div id="pattern-mode" class="mode-content">
+                    <!-- カテゴリフィルター -->
+                    <div class="pattern-filters">
+                        <button class="filter-btn active" data-category="all">すべて</button>
+                        <button class="filter-btn" data-category="ec">EC系</button>
+                        <button class="filter-btn" data-category="approval">承認系</button>
+                        <button class="filter-btn" data-category="inventory">在庫系</button>
+                    </div>
+
+                    <!-- パターンカード -->
+                    <div class="pattern-grid">
+                        <!-- EC注文フロー -->
+                        <div class="pattern-card" data-category="ec" data-pattern-id="ec-order">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">🛒</span>
+                                <h4>EC注文フロー</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="10" width="30" height="20" fill="#e3f2fd"/>
+                                    <line x1="40" y1="20" x2="70" y2="20" stroke="#333"/>
+                                    <rect x="70" y="10" width="30" height="20" fill="#e3f2fd"/>
+                                    <line x1="100" y1="20" x2="130" y2="20" stroke="#333"/>
+                                    <rect x="130" y="10" width="30" height="20" fill="#e3f2fd"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                顧客の注文から配送までの標準フロー
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 承認ワークフロー -->
+                        <div class="pattern-card" data-category="approval" data-pattern-id="approval">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">✅</span>
+                                <h4>承認ワークフロー</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#fff3e0"/>
+                                    <polygon points="70,30 90,50 70,70 50,50" fill="#ffecb3"/>
+                                    <rect x="120" y="20" width="30" height="20" fill="#e8f5e9"/>
+                                    <rect x="120" y="60" width="30" height="20" fill="#ffebee"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                申請→承認/却下の分岐フロー
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 在庫管理フロー -->
+                        <div class="pattern-card" data-category="inventory" data-pattern-id="inventory">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📦</span>
+                                <h4>在庫管理フロー</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <circle cx="30" cy="50" r="15" fill="#f3e5f5"/>
+                                    <line x1="45" y1="50" x2="75" y2="50" stroke="#333" stroke-dasharray="5,5"/>
+                                    <rect x="75" y="40" width="40" height="20" fill="#ede7f6"/>
+                                    <line x1="115" y1="50" x2="145" y2="50" stroke="#333"/>
+                                    <circle cx="160" cy="50" r="15" fill="#f3e5f5"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                在庫確認→補充→通知の自動化フロー
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- EC注文（在庫確認付き） -->
+                        <div class="pattern-card" data-category="ec" data-pattern-id="ec-order-with-stock">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">🛒</span>
+                                <h4>EC注文（在庫確認付き）</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#e3f2fd"/>
+                                    <polygon points="70,30 90,50 70,70 50,50" fill="#fff3e0"/>
+                                    <rect x="120" y="20" width="30" height="20" fill="#e8f5e9"/>
+                                    <rect x="120" y="60" width="30" height="20" fill="#ffcdd2"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                在庫確認→分岐処理（在庫あり/なし）
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 承認フロー（条件分岐） -->
+                        <div class="pattern-card" data-category="approval" data-pattern-id="approval-with-condition">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">✅</span>
+                                <h4>承認フロー（条件分岐）</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#fff3e0"/>
+                                    <polygon points="70,30 90,50 70,70 50,50" fill="#ffecb3"/>
+                                    <rect x="120" y="20" width="30" height="20" fill="#e8f5e9"/>
+                                    <rect x="120" y="60" width="30" height="20" fill="#ffebee"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                承認/却下の分岐処理と後続アクション
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 在庫管理（閾値判定） -->
+                        <div class="pattern-card" data-category="inventory" data-pattern-id="inventory-with-threshold">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📊</span>
+                                <h4>在庫管理（閾値判定）</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="30" width="30" height="40" rx="15" fill="#e1f5fe" stroke="#01579b" stroke-dasharray="2,2"/>
+                                    <polygon points="70,30 90,50 70,70 50,50" fill="#fff9c4"/>
+                                    <rect x="120" y="20" width="60" height="20" fill="#c8e6c9"/>
+                                    <rect x="120" y="60" width="60" height="20" fill="#ffccbc"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                ループ処理で在庫チェック→閾値判定
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 決済リトライフロー -->
+                        <div class="pattern-card" data-category="ec" data-pattern-id="payment-retry">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">💳</span>
+                                <h4>決済リトライフロー</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="30" width="40" height="40" rx="20" fill="#e3f2fd" stroke="#1976d2" stroke-dasharray="2,2"/>
+                                    <text x="30" y="55" text-anchor="middle" font-size="10">×3</text>
+                                    <polygon points="80,30 100,50 80,70 60,50" fill="#fff3e0"/>
+                                    <line x1="100" y1="40" x2="140" y2="40" stroke="#4caf50" stroke-width="2"/>
+                                    <line x1="100" y1="60" x2="140" y2="60" stroke="#f44336" stroke-width="2"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                最大3回リトライ→成功/失敗処理
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 並行処理フロー -->
+                        <div class="pattern-card" data-category="ec" data-pattern-id="parallel-process">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">⚡</span>
+                                <h4>並行処理フロー</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#e3f2fd"/>
+                                    <line x1="40" y1="50" x2="60" y2="30" stroke="#333"/>
+                                    <line x1="40" y1="50" x2="60" y2="50" stroke="#333"/>
+                                    <line x1="40" y1="50" x2="60" y2="70" stroke="#333"/>
+                                    <rect x="60" y="20" width="40" height="20" fill="#ffecb3"/>
+                                    <rect x="60" y="40" width="40" height="20" fill="#e1f5fe"/>
+                                    <rect x="60" y="60" width="40" height="20" fill="#f3e5f5"/>
+                                    <line x1="100" y1="30" x2="120" y2="50" stroke="#333"/>
+                                    <line x1="100" y1="50" x2="120" y2="50" stroke="#333"/>
+                                    <line x1="100" y1="70" x2="120" y2="50" stroke="#333"/>
+                                    <rect x="120" y="40" width="30" height="20" fill="#c8e6c9"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                複数処理を並行実行→結果統合
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：並行マイクロサービス呼び出し -->
+                        <div class="pattern-card" data-category="ec" data-pattern-id="parallel-microservices">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">🌐</span>
+                                <h4>並行マイクロサービス</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#e8f5e9"/>
+                                    <line x1="40" y1="50" x2="60" y2="20" stroke="#4caf50"/>
+                                    <line x1="40" y1="50" x2="60" y2="40" stroke="#4caf50"/>
+                                    <line x1="40" y1="50" x2="60" y2="60" stroke="#4caf50"/>
+                                    <line x1="40" y1="50" x2="60" y2="80" stroke="#4caf50"/>
+                                    <rect x="60" y="10" width="40" height="20" fill="#fff3e0"/>
+                                    <rect x="60" y="30" width="40" height="20" fill="#e3f2fd"/>
+                                    <rect x="60" y="50" width="40" height="20" fill="#fce4ec"/>
+                                    <rect x="60" y="70" width="40" height="20" fill="#f3e5f5"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                4つのマイクロサービスへ並行アクセス
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：バッチ並行処理 -->
+                        <div class="pattern-card" data-category="batch" data-pattern-id="parallel-batch">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📊</span>
+                                <h4>バッチ並行処理</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#fff9c4"/>
+                                    <line x1="40" y1="50" x2="60" y2="30" stroke="#f57c00" stroke-dasharray="2,2"/>
+                                    <line x1="40" y1="50" x2="60" y2="50" stroke="#f57c00" stroke-dasharray="2,2"/>
+                                    <line x1="40" y1="50" x2="60" y2="70" stroke="#f57c00" stroke-dasharray="2,2"/>
+                                    <rect x="60" y="20" width="40" height="20" fill="#ffecb3"/>
+                                    <rect x="60" y="40" width="40" height="20" fill="#e1f5fe"/>
+                                    <rect x="60" y="60" width="40" height="20" fill="#f3e5f5"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                売上・顧客・在庫データの並行変換
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：並行承認フロー -->
+                        <div class="pattern-card" data-category="approval" data-pattern-id="parallel-approval">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">✅</span>
+                                <h4>並行承認フロー</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="10" y="40" width="30" height="20" fill="#e8eaf6"/>
+                                    <line x1="40" y1="50" x2="60" y2="30" stroke="#3f51b5"/>
+                                    <line x1="40" y1="50" x2="60" y2="50" stroke="#3f51b5"/>
+                                    <line x1="40" y1="50" x2="60" y2="70" stroke="#3f51b5"/>
+                                    <rect x="60" y="20" width="40" height="20" fill="#c5cae9"/>
+                                    <rect x="60" y="40" width="40" height="20" fill="#bbdefb"/>
+                                    <rect x="60" y="60" width="40" height="20" fill="#b2dfdb"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                3部門への並行承認依頼
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：条件分岐＋並行処理 -->
+                        <div class="pattern-card" data-category="ec" data-pattern-id="parallel-with-condition">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">🔀</span>
+                                <h4>条件分岐＋並行処理</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <polygon points="30,50 50,30 70,50 50,70" fill="#fff3e0"/>
+                                    <line x1="70" y1="40" x2="90" y2="40" stroke="#4caf50"/>
+                                    <rect x="90" y="30" width="30" height="20" fill="#c8e6c9"/>
+                                    <line x1="70" y1="60" x2="90" y2="60" stroke="#f44336"/>
+                                    <line x1="90" y1="60" x2="110" y2="50" stroke="#333"/>
+                                    <line x1="90" y1="60" x2="110" y2="60" stroke="#333"/>
+                                    <line x1="90" y1="60" x2="110" y2="70" stroke="#333"/>
+                                    <rect x="110" y="45" width="20" height="10" fill="#ffecb3"/>
+                                    <rect x="110" y="55" width="20" height="10" fill="#e1f5fe"/>
+                                    <rect x="110" y="65" width="20" height="10" fill="#f3e5f5"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                キャッシュミス時の並行処理
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：データ同期ループ -->
+                        <div class="pattern-card" data-category="batch" data-pattern-id="loop-data-sync">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">🔄</span>
+                                <h4>データ同期ループ</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#e8f5e9" stroke="#4caf50" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="50" x2="80" y2="50" stroke="#333"/>
+                                    <rect x="80" y="40" width="30" height="20" fill="#e3f2fd"/>
+                                    <line x1="110" y1="50" x2="130" y2="50" stroke="#333"/>
+                                    <rect x="130" y="40" width="30" height="20" fill="#fff3e0"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                1000件ずつのバッチ同期処理
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：ヘルスチェックループ -->
+                        <div class="pattern-card" data-category="monitoring" data-pattern-id="loop-health-check">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">💓</span>
+                                <h4>ヘルスチェックループ</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#ffebee" stroke="#f44336" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="50" x2="80" y2="35" stroke="#333"/>
+                                    <line x1="60" y1="50" x2="80" y2="50" stroke="#333"/>
+                                    <line x1="60" y1="50" x2="80" y2="65" stroke="#333"/>
+                                    <rect x="80" y="25" width="30" height="20" fill="#e8eaf6"/>
+                                    <rect x="80" y="40" width="30" height="20" fill="#e1f5fe"/>
+                                    <rect x="80" y="55" width="30" height="20" fill="#fff9c4"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                5分ごとのサーバー監視
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：メール配信ループ -->
+                        <div class="pattern-card" data-category="marketing" data-pattern-id="loop-email-campaign">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📧</span>
+                                <h4>メール配信ループ</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#fce4ec" stroke="#e91e63" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="50" x2="90" y2="50" stroke="#333"/>
+                                    <rect x="90" y="40" width="40" height="20" fill="#f8bbd0"/>
+                                    <polygon points="140,50 150,40 160,50 150,60" fill="#fff3e0"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                大量メールの分割配信
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：APIページネーション -->
+                        <div class="pattern-card" data-category="integration" data-pattern-id="loop-api-pagination">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📑</span>
+                                <h4>APIページネーション</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#e8eaf6" stroke="#3f51b5" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="50" x2="90" y2="50" stroke="#333"/>
+                                    <rect x="90" y="40" width="40" height="20" fill="#c5cae9"/>
+                                    <line x1="130" y1="50" x2="160" y2="50" stroke="#333"/>
+                                    <rect x="160" y="40" width="30" height="20" fill="#bbdefb"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                外部APIからの全データ取得
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：キュー処理ループ -->
+                        <div class="pattern-card" data-category="messaging" data-pattern-id="loop-queue-processing">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📬</span>
+                                <h4>キュー処理ループ</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#f3e5f5" stroke="#9c27b0" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="50" x2="90" y2="50" stroke="#333"/>
+                                    <polygon points="90,50 100,40 110,50 100,60" fill="#fff3e0"/>
+                                    <line x1="110" y1="45" x2="130" y2="45" stroke="#4caf50"/>
+                                    <line x1="110" y1="55" x2="130" y2="55" stroke="#f44336"/>
+                                    <rect x="130" y="50" width="30" height="10" fill="#ffccbc"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                メッセージキューとリトライ処理
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：ファイル処理ループ -->
+                        <div class="pattern-card" data-category="batch" data-pattern-id="loop-file-processing">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">📁</span>
+                                <h4>ファイル処理ループ</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#fff9c4" stroke="#ffc107" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="50" x2="80" y2="50" stroke="#333"/>
+                                    <rect x="80" y="40" width="30" height="20" fill="#ffecb3"/>
+                                    <line x1="110" y1="50" x2="130" y2="50" stroke="#333"/>
+                                    <rect x="130" y="40" width="30" height="20" fill="#ffe0b2"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                ファイル変換の繰り返し処理
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- 新規追加：WebSocketハートビート -->
+                        <div class="pattern-card" data-category="realtime" data-pattern-id="loop-websocket-heartbeat">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">🔌</span>
+                                <h4>WebSocketハートビート</h4>
+                            </div>
+                            <div class="pattern-preview">
+                                <svg viewBox="0 0 200 100">
+                                    <rect x="20" y="30" width="40" height="40" rx="20" fill="#e1f5fe" stroke="#0288d1" stroke-dasharray="3,3"/>
+                                    <line x1="60" y1="40" x2="90" y2="40" stroke="#333"/>
+                                    <line x1="60" y1="60" x2="90" y2="60" stroke="#333" stroke-dasharray="2,2"/>
+                                    <rect x="90" y="30" width="40" height="20" fill="#b3e5fc"/>
+                                    <rect x="90" y="50" width="40" height="20" fill="#81d4fa"/>
+                                </svg>
+                            </div>
+                            <div class="pattern-description">
+                                リアルタイム接続の維持管理
+                            </div>
+                            <button class="btn-use-pattern">このパターンを使用</button>
+                        </div>
+
+                        <!-- カスタムパターン作成 -->
+                        <div class="pattern-card new-pattern">
+                            <div class="pattern-header">
+                                <span class="pattern-icon">➕</span>
+                                <h4>新規パターン作成</h4>
+                            </div>
+                            <div class="pattern-description">
+                                現在の編集内容をパターンとして保存
+                            </div>
+                            <button class="btn-create-pattern">パターンを作成</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- リサイズハンドル -->
+            <div class="resize-handle resize-handle-1" data-panel="editor-panel"></div>
+
+            <!-- 中央パネル: PlantUMLコード -->
+            <section class="code-panel">
+                <div class="code-header">
+                    <h3>PlantUMLコード</h3>
+                    <div class="actors-display">
+                        <span class="actors-label">アクター:</span>
+                        <span class="actors-list" id="code-panel-actors">未選択</span>
+                    </div>
+                    <div class="code-actions">
+                        <button class="btn-copy">📋 コピー</button>
+                        <button class="btn-format">📐 整形</button>
+                        <button class="btn-validate">✓ 検証</button>
+                        <button class="btn-sync" title="コードから同期">🔄 同期</button>
+                    </div>
+                </div>
+                <div class="code-editor-wrapper">
+                    <div class="line-numbers">
+                        <span>1</span>
+                        <span>2</span>
+                        <span>3</span>
+                        <span>4</span>
+                        <span>5</span>
+                        <span>6</span>
+                        <span>7</span>
+                        <span>8</span>
+                        <span>9</span>
+                        <span>10</span>
+                    </div>
+                    <textarea id="plantuml-code" class="code-editor" placeholder="PlantUMLコードを直接編集可能です。編集後、自動的にUIに反映されます。" spellcheck="false">@startuml
+
+@enduml</textarea>
+                </div>
+            </section>
+            
+            <!-- リサイズハンドル -->
+            <div class="resize-handle resize-handle-2" data-panel="code-panel"></div>
+
+            <!-- 右パネル: プレビュー -->
+            <section class="preview-panel">
+                <div class="preview-header">
+                    <h3>プレビュー</h3>
+                    <div class="preview-actions">
+                        <button class="btn-zoom-out">－</button>
+                        <span class="zoom-level">100%</span>
+                        <button class="btn-zoom-in">＋</button>
+                        <button class="btn-download">💾 保存</button>
+                        <button class="btn-download-drawio" title="draw.ioファイルをダウンロード">📥 .drawio</button>
+                    </div>
+                </div>
+                <div class="preview-container">
+                    <div id="preview-svg">
+                        <!-- SVGプレビューがここに表示される -->
+                        <div class="preview-placeholder">
+                            <p style="text-align: center; color: #999; padding: 20px;">
+                                アクターを選択して処理を追加すると<br>
+                                ここにプレビューが表示されます
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ステータスバー -->
+        <footer class="status-bar">
+            <span class="status-text">✅ 準備完了</span>
+            <span class="status-info">アクター: 0 | メッセージ: 0 | 更新: --:--:--</span>
+        </footer>
+    </div>
+
+    <!-- モーダル: カスタムアクター追加 -->
+    <div id="custom-actor-modal" class="modal">
+        <div class="modal-content">
+            <h3>カスタムアクター追加</h3>
+            <input type="text" id="custom-actor-name" placeholder="アクター名">
+            <div class="modal-actions">
+                <button class="btn-cancel">キャンセル</button>
+                <button class="btn-confirm">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル: 技術用語説明 -->
+    <div id="glossary-modal" class="modal">
+        <div class="modal-content glossary-content">
+            <div class="modal-header">
+                <h2>📖 PlantUML 技術用語説明</h2>
+                <button class="modal-close">×</button>
+            </div>
+            <div class="glossary-body">
+                <!-- 基本構造 -->
+                <div class="glossary-section">
+                    <h3>🏗️ 基本構造</h3>
+                    <div class="glossary-grid">
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>@startuml / @enduml</code>
+                                <span class="term-category">必須</span>
+                            </div>
+                            <div class="term-description">
+                                PlantUML図の開始と終了を示します。すべての図はこのタグで囲む必要があります。
+                            </div>
+                            <div class="term-visual">
+                                <div class="visual-diagram">
+                                    <div class="structure-diagram">
+                                        <div class="structure-box">
+                                            <div class="structure-start">📍 @startuml ← 図の開始（必ず最初に書く）</div>
+                                            <div class="structure-content">
+                                                <div class="structure-inner">
+                                                    ここに図の内容を書きます
+                                                    <br>・アクターの定義
+                                                    <br>・メッセージのやり取り
+                                                    <br>・条件分岐やループなど
+                                                </div>
+                                            </div>
+                                            <div class="structure-end">📍 @enduml ← 図の終了（必ず最後に書く）</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="term-example">
+                                <div class="example-title">📝 最小構成の例:</div>
+                                <pre>@startuml
+顧客 -> システム : ログイン
+@enduml</pre>
+                                <div class="example-result">
+                                    <div class="result-title">⚠️ 重要:</div>
+                                    <div class="result-description">
+                                        この2つのタグがないと、PlantUMLとして認識されません。
+                                        必ず図の最初と最後に記述してください。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>actor / participant</code>
+                                <span class="term-category">アクター定義</span>
+                            </div>
+                            <div class="term-description">
+                                システムの利用者（actor）や処理を行うシステム（participant）を定義します。
+                            </div>
+                            <div class="term-example">
+                                <pre>actor 顧客
+participant システム
+participant データベース</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 制御構造 -->
+                <div class="glossary-section">
+                    <h3>🔀 制御構造</h3>
+                    <div class="glossary-grid">
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>loop</code>
+                                <span class="term-category">繰り返し処理</span>
+                            </div>
+                            <div class="term-description">
+                                指定した条件が満たされるまで、同じ処理を繰り返します。
+                                <br><strong>日常例</strong>: 「全商品の処理が完了するまで、1商品ずつ在庫確認と発送を繰り返す」
+                            </div>
+                            <div class="term-visual">
+                                <div class="plantuml-preview" data-plantuml-code="@startuml
+actor 倉庫係
+participant システム
+participant 在庫DB
+
+loop 全商品の処理が完了するまで
+    倉庫係 -> システム : 次の商品を取得
+    システム -> 在庫DB : 在庫確認
+    在庫DB --> システム : 在庫数:50個
+    システム -> 倉庫係 : 発送指示
+    note right : 1商品ずつ処理
+end
+
+倉庫係 -> システム : 処理完了報告
+@enduml">
+                                    <div class="loading-text">図を生成中...</div>
+                                </div>
+                            </div>
+                            <div class="term-example">
+                                <div class="example-title">📝 PlantUMLコード:</div>
+                                <pre>@startuml
+actor 倉庫係
+participant システム
+participant 在庫DB
+
+loop 全商品の処理が完了するまで
+    倉庫係 -> システム : 次の商品を取得
+    システム -> 在庫DB : 在庫確認
+    在庫DB --> システム : 在庫数を返す
+    システム -> 倉庫係 : 発送指示
+end
+@enduml</pre>
+                                <div class="example-result">
+                                    <div class="result-title">📊 実際の表示:</div>
+                                    <div class="result-description">
+                                        上記のコードは「loop」という枠で囲まれた繰り返し処理として表示されます。
+                                        枠内の処理が条件を満たすまで何度も実行されます。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>alt / else</code>
+                                <span class="term-category">条件分岐</span>
+                            </div>
+                            <div class="term-description">
+                                条件によって異なる処理を実行します。「もし〜なら、そうでなければ」の処理。
+                                <br><strong>日常例</strong>: 「在庫があれば発送、なければ入荷待ち」
+                            </div>
+                            <div class="term-visual">
+                                <div class="plantuml-preview" data-plantuml-code="@startuml
+actor 顧客
+participant ECサイト
+participant 在庫管理
+participant 配送センター
+
+顧客 -> ECサイト : 商品を注文
+ECサイト -> 在庫管理 : 在庫確認
+
+alt 在庫あり
+    在庫管理 --> ECサイト : 在庫OK
+    ECサイト -> 配送センター : 発送指示
+    配送センター --> ECサイト : 発送完了
+    ECサイト -> 顧客 : 発送通知メール
+    note right of 顧客 : 2-3日でお届け
+else 在庫なし
+    在庫管理 --> ECサイト : 在庫なし
+    ECサイト -> 顧客 : 入荷待ち通知
+    ECサイト -> 在庫管理 : 入荷待ちリスト登録
+    note right of 顧客 : 入荷次第お知らせ
+end
+
+顧客 -> ECサイト : 了解
+@enduml">
+                                    <div class="loading-text">図を生成中...</div>
+                                </div>
+                            </div>
+                            <div class="term-example">
+                                <div class="example-title">📝 PlantUMLコード:</div>
+                                <pre>@startuml
+actor 顧客
+participant ECサイト
+participant 在庫管理
+participant 配送センター
+
+顧客 -> ECサイト : 商品を注文
+ECサイト -> 在庫管理 : 在庫確認
+
+alt 在庫あり
+    在庫管理 --> ECサイト : 在庫OK
+    ECサイト -> 配送センター : 発送指示
+    配送センター --> ECサイト : 発送完了
+    ECサイト -> 顧客 : 発送通知メール
+else 在庫なし
+    在庫管理 --> ECサイト : 在庫なし
+    ECサイト -> 顧客 : 入荷待ち通知
+    ECサイト -> 在庫管理 : 入荷待ちリスト登録
+end
+@enduml</pre>
+                                <div class="example-result">
+                                    <div class="result-title">📊 実際の表示:</div>
+                                    <div class="result-description">
+                                        「alt」で条件分岐が始まり、「else」で別の条件に切り替わります。
+                                        それぞれの条件に応じた処理が枠内に表示されます。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>opt</code>
+                                <span class="term-category">任意処理</span>
+                            </div>
+                            <div class="term-description">
+                                条件が満たされた場合のみ実行される処理です。実行されない場合もあります。
+                                <br><strong>日常例</strong>: 「VIP会員の場合のみ特典を付与」
+                            </div>
+                            <div class="term-example">
+                                <pre>opt VIP会員
+    システム -> 顧客 : 特典付与
+end</pre>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>par / else</code>
+                                <span class="term-category">並行処理</span>
+                            </div>
+                            <div class="term-description">
+                                複数の処理を同時に実行します。処理の順序は保証されません。
+                                <br><strong>日常例</strong>: 「在庫確認、与信確認、メールテンプレート準備を同時に行う」
+                                <br>⚠️ Kroki APIでは <code>par/and/end</code> は使用できません
+                            </div>
+                            <div class="term-visual">
+                                <div class="plantuml-preview" data-plantuml-code="@startuml
+actor 顧客
+participant ECサイト
+participant 在庫管理
+participant 決済システム
+participant メールサーバー
+
+顧客 -> ECサイト : 注文確定
+note right : 以下3つの処理を同時実行
+
+par
+    ECサイト -> 在庫管理 : 在庫確認
+    note right : 処理時間:2秒
+    在庫管理 --> ECサイト : 在庫OK
+else
+    ECサイト -> 決済システム : 与信確認
+    note right : 処理時間:3秒
+    決済システム --> ECサイト : 与信OK
+else
+    ECサイト -> メールサーバー : テンプレート準備
+    note right : 処理時間:1秒
+    メールサーバー --> ECサイト : 準備完了
+end
+
+note over ECサイト : 最長3秒で全処理完了
+
+ECサイト -> 顧客 : 注文完了通知
+@enduml">
+                                    <div class="loading-text">図を生成中...</div>
+                                </div>
+                            </div>
+                            <div class="term-example">
+                                <div class="example-title">📝 PlantUMLコード:</div>
+                                <pre>@startuml
+actor 顧客
+participant ECサイト
+participant 在庫管理
+participant 決済システム
+participant メールサーバー
+
+顧客 -> ECサイト : 注文確定
+
+par
+    ECサイト -> 在庫管理 : 在庫確認
+    在庫管理 --> ECサイト : 在庫OK
+else
+    ECサイト -> 決済システム : 与信確認
+    決済システム --> ECサイト : 与信OK
+else
+    ECサイト -> メールサーバー : メールテンプレート準備
+    メールサーバー --> ECサイト : 準備完了
+end
+
+ECサイト -> 顧客 : 注文完了通知
+@enduml</pre>
+                                <div class="example-result">
+                                    <div class="result-title">📊 実際の表示:</div>
+                                    <div class="result-description">
+                                        「par」で囲まれた部分の処理が同時に実行されます。
+                                        各処理は「else」で区切られ、並列に動作することを表現します。
+                                        <br><strong>⚠️ 注意</strong>: Kroki APIでは「par/and/end」は使えないため、
+                                        必ず「par/else/end」を使用してください。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>break</code>
+                                <span class="term-category">中断</span>
+                            </div>
+                            <div class="term-description">
+                                処理を中断して、ループから抜け出します。
+                                <br><strong>日常例</strong>: 「エラーが発生したら処理を中止」
+                            </div>
+                            <div class="term-example">
+                                <pre>loop データ処理
+    break エラー発生
+    システム -> DB : 更新
+end</pre>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>critical</code>
+                                <span class="term-category">排他制御</span>
+                            </div>
+                            <div class="term-description">
+                                同時に実行されてはいけない重要な処理を示します。
+                                <br><strong>日常例</strong>: 「在庫数の更新は同時に行わない」
+                            </div>
+                            <div class="term-example">
+                                <pre>critical
+    システム -> DB : 在庫数更新
+end</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- メッセージ種類 -->
+                <div class="glossary-section">
+                    <h3>➡️ メッセージの種類</h3>
+                    <div class="glossary-grid">
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>-></code>
+                                <span class="term-category">同期メッセージ</span>
+                            </div>
+                            <div class="term-description">
+                                通常のメッセージ送信。応答を待ってから次の処理に進みます。
+                            </div>
+                            <div class="term-example">
+                                <pre>顧客 -> システム : ログイン要求</pre>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>--></code>
+                                <span class="term-category">応答メッセージ</span>
+                            </div>
+                            <div class="term-description">
+                                リクエストに対する応答を示します。点線で表示されます。
+                            </div>
+                            <div class="term-example">
+                                <pre>システム --> 顧客 : ログイン成功</pre>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>->></code>
+                                <span class="term-category">非同期メッセージ</span>
+                            </div>
+                            <div class="term-description">
+                                応答を待たずに次の処理に進む非同期的なメッセージです。
+                            </div>
+                            <div class="term-example">
+                                <pre>システム ->> ログ : 記録（非同期）</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- その他の記法 -->
+                <div class="glossary-section">
+                    <h3>📝 その他の記法</h3>
+                    <div class="glossary-grid">
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>note</code>
+                                <span class="term-category">注釈</span>
+                            </div>
+                            <div class="term-description">
+                                図に説明や補足情報を追加します。
+                            </div>
+                            <div class="term-example">
+                                <pre>note right: ここで認証処理
+note over システム: 処理中
+note left of 顧客: ユーザー</pre>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>activate / deactivate</code>
+                                <span class="term-category">活性化</span>
+                            </div>
+                            <div class="term-description">
+                                オブジェクトが処理中であることを示します。縦長の長方形で表現されます。
+                            </div>
+                            <div class="term-example">
+                                <pre>activate システム
+システム -> DB : クエリ実行
+deactivate システム</pre>
+                            </div>
+                        </div>
+
+                        <div class="glossary-item">
+                            <div class="term-header">
+                                <code>ref</code>
+                                <span class="term-category">参照</span>
+                            </div>
+                            <div class="term-description">
+                                他の図や処理への参照を示します。
+                            </div>
+                            <div class="term-example">
+                                <pre>ref over システム: 認証処理
+    詳細は認証フロー図を参照
+end ref</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- クイックリファレンス -->
+                <div class="glossary-section">
+                    <h3>⚡ クイックリファレンス</h3>
+                    <table class="quick-reference">
+                        <thead>
+                            <tr>
+                                <th>PlantUML構文</th>
+                                <th>日本語での意味</th>
+                                <th>使用場面</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>loop</code></td>
+                                <td>繰り返し処理</td>
+                                <td>バッチ処理、全件処理</td>
+                            </tr>
+                            <tr>
+                                <td><code>alt/else</code></td>
+                                <td>条件分岐</td>
+                                <td>成功/失敗の処理分け</td>
+                            </tr>
+                            <tr>
+                                <td><code>opt</code></td>
+                                <td>任意実行</td>
+                                <td>オプション機能、追加処理</td>
+                            </tr>
+                            <tr>
+                                <td><code>par/else</code></td>
+                                <td>並行処理</td>
+                                <td>同時実行、非同期処理</td>
+                            </tr>
+                            <tr>
+                                <td><code>break</code></td>
+                                <td>中断</td>
+                                <td>エラー処理、早期終了</td>
+                            </tr>
+                            <tr>
+                                <td><code>critical</code></td>
+                                <td>排他制御</td>
+                                <td>DB更新、重要処理</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close-glossary">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pako.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <!-- PlantUML Encoder -->
+    <script src="https://cdn.jsdelivr.net/npm/plantuml-encoder@1.4.0/dist/plantuml-encoder.min.js"></script>
+    
+    <!-- PlantUML AST Parser (Phase 1 & 2) -->
+    <!-- フリーズ問題のため一時的に無効化 - 2025-08-13 -->
+    <!--
+    <script src="TokenTypes.js"></script>
+    <script src="ASTTypes.js"></script>
+    <script src="IDManager.js"></script>
+    <script src="PlantUMLASTParser.js"></script>
+    -->
+    
+    <!-- Phase 2: 双方向同期機能 -->
+    <!-- フリーズ問題のため一時的に無効化 - 2025-08-13 -->
+    <!--
+    <script src="DiffCalculator.js"></script>
+    <script src="CursorStateManager.js"></script>
+    <script src="ASTToGUIConverter.js"></script>
+    -->
+    
+    <!-- Phase 3: リアルタイム双方向同期システム -->
+    <!-- フリーズ問題のため一時的に無効化 - 2025-08-13 -->
+    <!--
+    <script src="RealtimeSyncManager.js"></script>
+    -->
+    
+    <!-- Phase 2改善版: モジュール化されたパーサーと状態管理 -->
+    <script src="PlantUMLParser.js"></script>
+    <script src="SyncStateManager.js"></script>
+    
+    <!-- Phase 3改善版: Web Worker通信インターフェース -->
+    <script src="WorkerInterface.js"></script>
+    
+    <!-- 新しい診断・セーフモード・非同期処理モジュール -->
+    <script src="DiagnosticMode.js"></script>
+    <script src="SafeMode.js"></script>
+    <script src="EventManager.js"></script>
+    <script src="AsyncParser.js"></script>
+    <script src="IntegrationManager.js"></script>
+    
+    <!-- Phase 2: 安定化システム -->
+    <script src="MemoryManager.js"></script>
+    <script src="ErrorBoundary.js"></script>
+    
+    <!-- Phase 4: 品質保証と最適化 -->
+    <!-- フリーズ問題のため一時的に無効化 - 2025-08-13 -->
+    <!--
+    <script src="ErrorHandler.js"></script>
+    <script src="PerformanceOptimizer.js"></script>
+    <script src="ValidationEngine.js"></script>
+    -->
+    
+    <script src="drawio-converter.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

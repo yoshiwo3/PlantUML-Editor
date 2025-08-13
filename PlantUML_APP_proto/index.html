@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かんたん図メーカー | 日本語で書くだけ</title>
+    <!-- Pako for deflate compression -->
+    <script src="https://unpkg.com/pako@1.0.10/dist/pako_deflate.min.js"></script>
+    <!-- PlantUML Encoder (not used directly, but pako is sufficient) -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "メイリオ", "Meiryo", "ヒラギノ角ゴ Pro", sans-serif;
+            background: #f0f4f8;
+            color: #2c3e50;
+        }
+
+        /* ヘッダー */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: normal;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        /* メインコンテナ */
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        /* 2カラムレイアウト */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+
+        /* 左側：入力エリア */
+        .input-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* サンプルボタン */
+        .samples {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sample-btn {
+            background: white;
+            border: 2px solid #e0e6ed;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .sample-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* テキストエリア */
+        .text-input {
+            flex: 1;
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* 入力ヒント */
+        .input-hint {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 右側：プレビューエリア */
+        .preview-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* タブ */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e6ed;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: bold;
+        }
+
+        /* プレビューエリア */
+        .preview-content {
+            flex: 1;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: auto;
+            background: #fafbfc;
+        }
+
+        #preview-area {
+            text-align: center;
+            min-height: 400px;
+        }
+
+        #code-area {
+            display: none;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            background: #2c3e50;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        /* ローディング */
+        .loading {
+            color: #999;
+            font-size: 14px;
+            padding: 50px;
+        }
+
+        /* 変換ボタン */
+        .convert-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.3s;
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* エクスポートボタン */
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .export-btn {
+            flex: 1;
+            padding: 10px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .export-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* リアルタイム変換インジケーター */
+        .auto-convert {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 12px;
+            color: #4caf50;
+        }
+
+        /* エラーメッセージ */
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .preview-section {
+                min-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <div class="header">
+        <h1>📊 かんたん図メーカー</h1>
+        <p>日本語で書くだけで、きれいな図が完成！</p>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="container">
+        <div class="main-content">
+            <!-- 左側：入力 -->
+            <div class="input-section">
+                <div class="section-title">
+                    日本語で書いてください
+                    <span class="auto-convert" id="auto-status"></span>
+                </div>
+                
+                <!-- サンプルボタン -->
+                <div class="samples">
+                    <button class="sample-btn" onclick="loadSample('estimate')">見積サンプル</button>
+                    <button class="sample-btn" onclick="loadSample('contract')">契約サンプル</button>
+                    <button class="sample-btn" onclick="loadSample('billing')">請求サンプル</button>
+                    <button class="sample-btn" onclick="loadSample('approval')">承認フロー</button>
+                    <button class="sample-btn" onclick="loadSample('ecOrder')">EC注文処理</button>
+                    <button class="sample-btn" onclick="loadSample('returnProcess')">返品処理</button>
+                    <button class="sample-btn" onclick="loadSample('inventory')">在庫管理</button>
+                    <button class="sample-btn" onclick="loadSample('support')">問合せ対応</button>
+                    <button class="sample-btn" onclick="loadSample('recruitment')">採用フロー</button>
+                    <button class="sample-btn" onclick="loadSample('expense')">経費精算</button>
+                    <button class="sample-btn" onclick="clearInput()">クリア</button>
+                </div>
+
+                <!-- テキスト入力 -->
+                <textarea class="text-input" id="input-text" placeholder="例：
+顧客から見積依頼が来る
+営業が内容を確認する
+金額によって承認者が変わる
+承認されたら顧客に送る
+
+または、箇条書きでもOK：
+・見積依頼の受付
+・内容確認
+・承認処理
+・顧客への送付"></textarea>
+
+                <!-- ヒント -->
+                <div class="input-hint">
+                    💡 ヒント：「AがBに〜する」「〜から〜へ」のように書くと、きれいな図になります。
+                    不明な部分は「？」をつけてください。
+                </div>
+
+                <!-- 変換ボタン -->
+                <button class="convert-btn" onclick="convertToPlantUML()">
+                    図に変換する →
+                </button>
+            </div>
+
+            <!-- 右側：プレビュー -->
+            <div class="preview-section">
+                <!-- タブ -->
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('preview')">プレビュー</button>
+                    <button class="tab" onclick="switchTab('code')">PlantUMLコード</button>
+                </div>
+
+                <!-- プレビューコンテンツ -->
+                <div class="preview-content">
+                    <div id="preview-area">
+                        <div class="loading">ここに図が表示されます</div>
+                    </div>
+                    <div id="code-area"></div>
+                </div>
+
+                <!-- エクスポートボタン -->
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="downloadPNG()">画像保存 (PNG)</button>
+                    <button class="export-btn" onclick="copyCode()">コードコピー</button>
+                    <button class="export-btn" onclick="copyForPPT()">PowerPoint用コピー</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ユーティリティ関数
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        // グローバル変数
+        let currentCode = '';
+        let autoConvertTimer = null;
+
+        // サンプルデータ
+        const samples = {
+            estimate: `顧客から見積依頼が来る
+営業担当が内容を確認する
+見積金額を計算する
+金額が10万円未満なら自動承認
+金額が50万円未満なら課長承認
+金額が50万円以上なら部長承認
+承認されたら見積書を作成
+顧客に見積書を送付する`,
+
+            contract: `見積が承認される
+契約書を作成する
+法務部がレビューする
+問題があれば修正依頼？
+顧客に契約書を送付
+顧客が署名する
+契約をシステムに登録
+ライセンスを発行する`,
+
+            billing: `月末に請求データを作成
+経理部門が内容を確認
+請求書を発行する
+顧客に請求書を送付
+入金を確認する
+入金済みなら売上計上
+未入金なら督促処理？`,
+
+            approval: `申請者が稟議書を作成する
+申請者が上長に申請を提出する
+上長が内容を確認する
+上長が金額を確認する
+100万円未満なら部長承認へ
+100万円以上500万円未満なら本部長承認へ
+500万円以上なら役員承認へ
+承認者が内容を精査する
+承認者が詳細を確認する？
+問題があれば差し戻し
+問題がなければ承認
+承認後に申請者に通知する
+申請者が実行に移す
+経理部が予算を確保する
+購買部が発注処理を行う`,
+
+            ecOrder: `ユーザーがECサイトにアクセスする
+ECサイトがトップページを表示する
+ユーザーが商品を検索する
+ECサイトが検索結果を表示する
+ユーザーが商品詳細を確認する
+ECサイトが在庫を確認する
+在庫があれば購入可能を表示
+在庫がなければ入荷待ちを表示？
+ユーザーがカートに追加する
+ECサイトがカート内容を更新する
+ユーザーが購入手続きに進む
+ECサイトが配送先を確認する
+ユーザーが支払い方法を選択する
+クレジットカードなら即時決済
+代引きなら注文確定
+銀行振込なら入金待ち？
+ECサイトが注文を確定する
+ECサイトが注文確認メールを送信する
+倉庫システムに出荷指示を送る
+倉庫が商品をピッキングする
+倉庫が梱包を行う
+配送業者が集荷する
+配送業者が配送する
+ユーザーが商品を受け取る
+ECサイトが完了通知を送る`,
+
+            returnProcess: `顧客が返品申請を行う
+カスタマーサポートが申請を受付する
+カスタマーサポートが返品理由を確認する
+初期不良なら即時承認
+サイズ違いなら条件付き承認
+お客様都合なら審査が必要？
+承認された場合は返品番号を発行
+顧客に返送方法を案内する
+顧客が商品を返送する
+倉庫が返品を受け取る
+倉庫が商品状態を検査する
+検査に合格したら返金処理へ
+検査に不合格なら顧客に連絡？
+経理部が返金処理を実行する
+顧客に返金完了を通知する
+在庫システムを更新する
+返品商品が再販可能か判定する
+再販可能なら在庫に戻す
+再販不可なら廃棄処理？`,
+
+            inventory: `倉庫が在庫数を確認する
+システムが安全在庫を下回ったか判定する
+下回った場合は発注アラートを出す
+購買部がアラートを確認する
+購買部がサプライヤーに発注する
+サプライヤーが在庫を確認する
+在庫があれば納期回答
+在庫がなければ製造手配？
+サプライヤーが出荷準備をする
+サプライヤーが商品を発送する
+倉庫が入荷予定を登録する
+商品が倉庫に到着する
+倉庫が検品を実施する
+検品に合格したら入庫処理
+検品に不合格なら返品処理？
+システムが在庫数を更新する
+在庫が適正レベルに回復する`,
+
+            support: `顧客が問い合わせフォームに入力する
+システムが問い合わせを受信する
+システムが自動返信メールを送信する
+システムがチケット番号を発行する
+システムが内容をカテゴリ分類する
+技術的な問題なら技術サポートへ
+注文関連なら注文管理チームへ
+返品関連なら返品対応チームへ
+その他なら一般サポートへ？
+担当者がチケットを確認する
+担当者が優先度を設定する
+緊急なら即時対応
+通常なら順番待ち
+低優先度なら後回し？
+担当者が顧客に初回返答する
+担当者が詳細を調査する
+解決策が見つかったら回答する
+解決策が見つからなければエスカレーション？
+顧客が回答を確認する
+解決したらチケットをクローズ
+未解決なら追加対応？
+システムが対応履歴を記録する
+システムが満足度調査を送信する`,
+
+            recruitment: `応募者が求人サイトから応募する
+人事部が応募書類を受信する
+人事部が書類選考を実施する
+書類選考に合格したら一次面接へ
+書類選考に不合格ならお見送り通知？
+人事部が一次面接の日程調整をする
+応募者が希望日時を回答する
+人事部が面接日時を確定する
+人事担当者が一次面接を実施する
+一次面接官が評価を入力する
+合格なら二次面接へ
+不合格ならお見送り通知？
+現場責任者が二次面接を実施する
+現場責任者が技術力を評価する
+現場責任者がカルチャーフィットを評価する
+二次面接に合格したら最終面接へ
+役員が最終面接を実施する
+役員が総合評価を行う
+内定を出すか判定する
+内定の場合は条件提示
+不合格の場合はお見送り通知？
+応募者が内定を承諾する
+人事部が入社手続きを開始する
+入社日を調整する
+必要書類を送付する
+入社準備を完了する`,
+
+            expense: `社員が経費を立て替える
+社員が経費精算システムにログインする
+社員が精算申請を作成する
+社員が領収書をアップロードする
+社員が申請内容を入力する
+交通費なら経路を入力
+会議費なら参加者を入力
+接待費なら相手先を入力？
+社員が申請を提出する
+システムが自動チェックを実行する
+規定違反があればエラー表示？
+上長に承認依頼が届く
+上長が申請内容を確認する
+金額が5万円未満なら承認
+金額が5万円以上なら追加確認？
+問題があれば差し戻し
+問題がなければ承認
+経理部に精算依頼が届く
+経理部が内容を最終確認する
+経理部が支払い処理を実行する
+月末に一括振込
+緊急の場合は個別振込？
+社員の口座に入金される
+システムが精算完了を通知する`
+        };
+
+        // サンプル読み込み
+        function loadSample(type) {
+            if (samples[type]) {
+                document.getElementById('input-text').value = samples[type];
+                convertToPlantUML();
+            } else {
+                console.error('サンプルが見つかりません:', type);
+            }
+        }
+
+        // 入力クリア
+        function clearInput() {
+            document.getElementById('input-text').value = '';
+            document.getElementById('preview-area').innerHTML = '<div class="loading">ここに図が表示されます</div>';
+            currentCode = '';
+        }
+
+        // タブ切り替え
+        function switchTab(tab) {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'preview') {
+                document.getElementById('preview-area').style.display = 'block';
+                document.getElementById('code-area').style.display = 'none';
+            } else {
+                document.getElementById('preview-area').style.display = 'none';
+                document.getElementById('code-area').style.display = 'block';
+                document.getElementById('code-area').textContent = currentCode;
+            }
+        }
+
+        // PlantUML変換
+        function convertToPlantUML() {
+            const input = document.getElementById('input-text').value.trim();
+            if (!input) {
+                alert('テキストを入力してください');
+                return;
+            }
+
+            // ローディング表示
+            document.getElementById('preview-area').innerHTML = '<div class="loading">変換中...</div>';
+            document.getElementById('auto-status').textContent = '処理中...';
+
+            // 簡易的な変換ロジック（実際のプロトタイプ用）
+            setTimeout(() => {
+                currentCode = generatePlantUML(input);
+                renderPreview(currentCode);
+                document.getElementById('auto-status').textContent = '✓ 変換完了';
+            }, 500);
+        }
+
+        // PlantUMLコード生成（完全版）
+        function generatePlantUML(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            let code = '@startuml\n';
+            
+            // タイトル
+            code += 'title 業務フロー図\n\n';
+            
+            // アクターとメッセージを抽出するための改良版パーサー
+            const actors = new Map(); // 順序を保持
+            const messages = [];
+            
+            // 主要な動作主体（アクター）を検出
+            const detectActors = (text) => {
+                const actorSet = new Set();
+                
+                // 一般的なアクター名
+                const commonActors = ['ユーザー', 'ECサイト', 'EC', '顧客', '営業', 'システム', '管理者', '経理', '法務'];
+                
+                // 非アクター（概念やモノ）
+                const nonActors = ['商品', '在庫', '適正レベル', '問題', '解決', '結果', '状態', '完了', '金額', '売上', '注文', '見積', '請求', '契約', '安全在庫', '納期', '製造', '入荷', '検品', '入庫', '返品'];
+                
+                lines.forEach(line => {
+                    // 「〜が」パターンでアクターを検出
+                    const match = line.match(/^([^がをに]+?)が/);
+                    if (match) {
+                        const actor = match[1].trim();
+                        // 非アクターでなく、かつ（一般的なアクターか、2文字以上の名詞）
+                        if (!nonActors.includes(actor) && (commonActors.includes(actor) || actor.length >= 2)) {
+                            actorSet.add(actor);
+                        }
+                    }
+                    
+                    // 「〜に」「〜から」でもアクターを検出
+                    const targetMatch = line.match(/([^がをに]+?)に|([^がをに]+?)から/);
+                    if (targetMatch) {
+                        const target = (targetMatch[1] || targetMatch[2] || '').trim();
+                        if (!nonActors.includes(target) && (commonActors.includes(target) || target.length >= 2)) {
+                            actorSet.add(target);
+                        }
+                    }
+                });
+                
+                return actorSet;
+            };
+            
+            const detectedActors = detectActors(text);
+            
+            // 非アクター（概念、モノ、状態）のリスト
+            const nonActors = ['商品', '在庫', '適正レベル', '問題', '解決', '結果', '状態', '完了', '金額', '売上', '注文', '見積', '請求', '契約', '安全在庫', '納期', '製造', '入荷', '検品', '入庫', '返品'];
+            
+            // 各行をパース
+            lines.forEach((line, index) => {
+                const cleanLine = line.replace(/^[・•]\s*/, '').trim();
+                
+                // パターン1: 「AがBに〜する」「AからBへ〜」
+                let match = cleanLine.match(/^([^がをに]+?)が([^がをに]+?)に(.+)/);
+                if (!match) {
+                    match = cleanLine.match(/^([^がをに]+?)から([^がをに]+?)へ(.+)/);
+                }
+                if (match) {
+                    const [, from, to, action] = match;
+                    // 非アクターは除外
+                    if (!nonActors.includes(from) && !nonActors.includes(to)) {
+                        if (!actors.has(from)) actors.set(from, true);
+                        if (!actors.has(to)) actors.set(to, true);
+                        
+                        messages.push({
+                            from: from.trim(),
+                            to: to.trim(),
+                            action: action.trim().replace(/[。、]$/, ''),
+                            isUncertain: action.includes('？')
+                        });
+                    } else {
+                        // 非アクターが含まれる場合は、前のメッセージのコンテキストで処理
+                        if (messages.length > 0) {
+                            const lastMsg = messages[messages.length - 1];
+                            messages.push({
+                                from: lastMsg.to,
+                                to: lastMsg.to,
+                                action: cleanLine.replace(/[。、]$/, ''),
+                                isUncertain: cleanLine.includes('？')
+                            });
+                        }
+                    }
+                    return;
+                }
+                
+                // パターン2: 「AがBを〜する」
+                match = cleanLine.match(/^([^がをに]+?)が([^がをに]+?)を(.+)/);
+                if (match) {
+                    const [, actor, object, action] = match;
+                    
+                    // 非アクターは除外
+                    if (nonActors.includes(actor)) {
+                        // 前のメッセージがあれば、そのアクターのアクションとして扱う
+                        if (messages.length > 0) {
+                            const lastMsg = messages[messages.length - 1];
+                            messages.push({
+                                from: lastMsg.to,
+                                to: lastMsg.to,
+                                action: cleanLine.replace(/[。、]$/, ''),
+                                isUncertain: cleanLine.includes('？')
+                            });
+                        }
+                        return;
+                    }
+                    
+                    if (!actors.has(actor)) actors.set(actor, true);
+                    
+                    // 対象を推測
+                    let target = null;
+                    
+                    // 前のメッセージから推測を試みる
+                    if (messages.length > 0) {
+                        const lastMsg = messages[messages.length - 1];
+                        target = lastMsg.from === actor ? lastMsg.to : lastMsg.from;
+                    }
+                    
+                    // targetがまだnullの場合、アクターに応じたデフォルトを設定
+                    if (!target || target === 'undefined' || target === '') {
+                        if (actor === 'ユーザー' || actor === '顧客') {
+                            target = 'ECサイト';
+                        } else if (actor === 'ECサイト' || actor === 'EC') {
+                            target = 'ユーザー';
+                        } else if (actor === '営業' || actor === '営業担当' || actor === '営業部門' || actor === '営業部') {
+                            target = '顧客';
+                        } else if (actor === '経理部門' || actor === '経理部' || actor === '経理') {
+                            target = 'システム';
+                        } else if (actor === '法務部' || actor === '法務') {
+                            target = 'システム';
+                        } else if (actor === '人事部' || actor === '人事') {
+                            target = 'システム';
+                        } else if (actor === '倉庫' || actor === '倉庫システム') {
+                            target = 'システム';
+                        } else if (actor === '配送業者') {
+                            target = '顧客';
+                        } else {
+                            target = 'システム';
+                        }
+                    }
+                    
+                    // targetが確実に設定されていることを確認
+                    if (!target || target === 'undefined' || target === '') {
+                        target = 'システム'; // 最終的なフォールバック
+                    }
+                    
+                    if (target && target !== 'undefined' && target !== '' && !actors.has(target)) actors.set(target, true);
+                    
+                    messages.push({
+                        from: actor.trim(),
+                        to: target.trim(),
+                        action: `${object}を${action}`.trim().replace(/[。、]$/, ''),
+                        isUncertain: action.includes('？')
+                    });
+                    
+                    return;
+                }
+                
+                // パターン3: 「Aが〜する」（動作主体のみ）
+                match = cleanLine.match(/^([^がをに]+?)が(.+)/);
+                if (match) {
+                    const [, actor, action] = match;
+                    
+                    // 非アクター（モノや状態）を除外
+                    if (nonActors.includes(actor) || nonActors.some(na => actor.includes(na))) {
+                        // 前のメッセージがあれば、そのアクターのアクションとして扱う
+                        if (messages.length > 0) {
+                            const lastMsg = messages[messages.length - 1];
+                            messages.push({
+                                from: lastMsg.to,
+                                to: lastMsg.to,
+                                action: cleanLine.replace(/[。、]$/, ''),
+                                isUncertain: cleanLine.includes('？')
+                            });
+                        }
+                        return;
+                    }
+                    
+                    if (!actors.has(actor)) actors.set(actor, true);
+                    
+                    // 相手を推測
+                    let target = null;
+                    if (messages.length > 0) {
+                        const lastMsg = messages[messages.length - 1];
+                        // 前のメッセージの相手を使う
+                        target = lastMsg.from === actor ? lastMsg.to : lastMsg.from;
+                    }
+                    
+                    // targetがまだnullの場合、アクターに応じたデフォルトを設定
+                    if (!target) {
+                        if (actor === 'ユーザー' || actor === '顧客') {
+                            target = 'ECサイト';
+                        } else if (actor === 'ECサイト' || actor === 'EC') {
+                            target = 'ユーザー';
+                        } else if (actor === '経理部門' || actor === '経理部' || actor === '経理') {
+                            target = 'システム';
+                        } else if (actor === '営業部門' || actor === '営業部' || actor === '営業' || actor === '営業担当') {
+                            target = '顧客';
+                        } else if (actor === '法務部' || actor === '法務') {
+                            target = 'システム';
+                        } else if (actor === '人事部' || actor === '人事') {
+                            target = 'システム';
+                        } else if (actor === '倉庫' || actor === '倉庫システム') {
+                            target = 'システム';
+                        } else if (actor === '配送業者') {
+                            target = '顧客';
+                        } else {
+                            // それでも不明な場合は「システム」をデフォルトに
+                            target = 'システム';
+                        }
+                    }
+                    
+                    // targetが確実に設定されていることを確認
+                    if (!target) {
+                        target = 'システム'; // 最終的なフォールバック
+                    }
+                    
+                    if (target && target !== 'undefined' && target !== '' && !actors.has(target)) actors.set(target, true);
+                    
+                    messages.push({
+                        from: actor.trim(),
+                        to: target.trim(),
+                        action: action.trim().replace(/[。、]$/, ''),
+                        isUncertain: action.includes('？')
+                    });
+                    
+                    return;
+                }
+                
+                // パターン4: 条件分岐「〜したら〜」「〜なら〜」
+                if (cleanLine.includes('したら') || cleanLine.includes('なら')) {
+                    const parts = cleanLine.split(/したら|なら/);
+                    if (parts.length === 2) {
+                        messages.push({
+                            type: 'condition',
+                            condition: parts[0].trim(),
+                            action: parts[1].trim().replace(/[。、]$/, '')
+                        });
+                    }
+                    return;
+                }
+                
+                // パターン5: 時間や条件で始まる文（月末に、年度末に、など）
+                if (cleanLine.match(/^(月末|月初|年末|年度末|週末|毎月|毎週|毎日|定期的)に(.+)/)) {
+                    const match = cleanLine.match(/^(月末|月初|年末|年度末|週末|毎月|毎週|毎日|定期的)に(.+)/);
+                    const [, timing, action] = match;
+                    
+                    // 最初のメッセージの場合、デフォルトアクターを設定
+                    if (messages.length === 0) {
+                        actors.set('システム', true);
+                        actors.set('経理部門', true);
+                    }
+                    
+                    // システムが定期処理を行うと解釈
+                    messages.push({
+                        from: 'システム',
+                        to: 'システム',
+                        action: `[${timing}] ${action}`.trim().replace(/[。、]$/, ''),
+                        isUncertain: action.includes('？')
+                    });
+                    return;
+                }
+                
+                // パターン6: その他の文（前のアクターを再利用）
+                // ただし、単純な状態変化や結果は除外
+                if (messages.length > 0 && 
+                    cleanLine.match(/する$|れる$|いる$/) &&
+                    !cleanLine.match(/^(在庫|商品|適正レベル|問題|解決|結果|状態|完了)/)) {
+                    const lastMsg = messages[messages.length - 1];
+                    messages.push({
+                        from: lastMsg.to,
+                        to: lastMsg.from,
+                        action: cleanLine.replace(/[。、]$/, ''),
+                        isUncertain: cleanLine.includes('？')
+                    });
+                }
+            });
+            
+            // アクターが見つからなかった場合のデフォルト
+            if (actors.size === 0) {
+                actors.set('ユーザー', true);
+                actors.set('システム', true);
+            }
+            
+            // アクター定義（順序を保持）
+            [...actors.keys()].forEach(actor => {
+                // undefinedやnullや空文字を除外
+                if (actor && actor !== 'undefined' && actor !== 'null' && actor !== '') {
+                    code += `participant "${actor}"\n`;
+                }
+            });
+            code += '\n';
+            
+            // メッセージ生成
+            let inAlt = false;
+            let lastActiveActor = null;
+            messages.forEach((msg, index) => {
+                if (msg.type === 'condition') {
+                    // 条件分岐
+                    if (!inAlt) {
+                        code += `alt ${msg.condition}\n`;
+                        inAlt = true;
+                    } else {
+                        code += `else ${msg.condition}\n`;
+                    }
+                    
+                    // 条件成立時のアクション
+                    if (lastActiveActor) {
+                        // 前のアクターを使ってアクションを生成
+                        const arrow = msg.action.includes('？') ? '-->' : '->';
+                        code += `  "${lastActiveActor}" ${arrow} "${lastActiveActor}" : ${msg.action}\n`;
+                    } else if (messages[index - 1] && messages[index - 1].from && messages[index - 1].to) {
+                        const prevMsg = messages[index - 1];
+                        const arrow = msg.action.includes('？') ? '-->' : '->';
+                        code += `  "${prevMsg.to}" ${arrow} "${prevMsg.from}" : ${msg.action}\n`;
+                    }
+                } else if (msg.from && msg.to) {
+                    if (inAlt) {
+                        code += 'end\n';
+                        inAlt = false;
+                    }
+                    
+                    // メッセージ矢印
+                    const arrow = msg.isUncertain ? '-->' : '->';
+                    code += `"${msg.from}" ${arrow} "${msg.to}" : ${msg.action}\n`;
+                    
+                    // 最後のアクティブなアクターを記録
+                    lastActiveActor = msg.to;
+                }
+            });
+            
+            if (inAlt) {
+                code += 'end\n';
+            }
+            
+            code += '\n@enduml';
+            return code;
+        }
+
+        // プレビュー表示（改良版）
+        function renderPreview(code) {
+            try {
+                const previewArea = document.getElementById('preview-area');
+                
+                // Kroki APIで必要なdeflate + base64エンコーディング
+                function encodeForKroki(str) {
+                    // UTF-8エンコード
+                    const utf8 = new TextEncoder().encode(str);
+                    // deflate圧縮（level 9）
+                    const compressed = pako.deflate(utf8, { level: 9 });
+                    // Base64エンコード（バイナリセーフな方法）
+                    let binary = '';
+                    const bytes = new Uint8Array(compressed);
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const base64 = btoa(binary);
+                    // URL安全な文字に変換
+                    return base64
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=/g, '');
+                }
+                
+                // SVGを直接リクエスト
+                const encoded = encodeForKroki(code);
+                const svgUrl = `https://kroki.io/plantuml/svg/${encoded}`;
+                
+                // SVG表示（エラーハンドリング付き）
+                const img = new Image();
+                img.onload = function() {
+                    previewArea.innerHTML = '';
+                    previewArea.appendChild(img);
+                };
+                img.onerror = function() {
+                    // エラー時はコードを表示
+                    previewArea.innerHTML = `
+                        <div class="error-message">
+                            図の生成に失敗しました。PlantUMLコードを確認してください。
+                        </div>
+                        <pre style="text-align: left; background: #f0f0f0; padding: 10px; border-radius: 5px; font-size: 12px; overflow: auto;">${escapeHtml(code)}</pre>
+                    `;
+                };
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.src = svgUrl;
+                img.alt = 'PlantUML Diagram';
+                
+            } catch (error) {
+                console.error('レンダリングエラー:', error);
+                document.getElementById('preview-area').innerHTML = `
+                    <div class="error-message">
+                        エラーが発生しました: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // エクスポート機能
+        function downloadPNG() {
+            if (!currentCode) {
+                alert('先に図を生成してください');
+                return;
+            }
+            alert('PNG保存機能は準備中です');
+        }
+
+        function copyCode() {
+            if (!currentCode) {
+                alert('先に図を生成してください');
+                return;
+            }
+            navigator.clipboard.writeText(currentCode).then(() => {
+                alert('PlantUMLコードをコピーしました');
+            });
+        }
+
+        function copyForPPT() {
+            alert('PowerPoint用コピー機能は準備中です');
+        }
+
+        // 自動変換（入力から1秒後）
+        document.getElementById('input-text').addEventListener('input', function() {
+            clearTimeout(autoConvertTimer);
+            document.getElementById('auto-status').textContent = '入力中...';
+            
+            autoConvertTimer = setTimeout(() => {
+                if (this.value.trim()) {
+                    convertToPlantUML();
+                }
+            }, 1000);
+        });
+
+        // 初期表示
+        window.addEventListener('DOMContentLoaded', () => {
+            // デフォルトサンプルを表示
+            loadSample('estimate');
+        });
+    </script>
+</body>
+</html>

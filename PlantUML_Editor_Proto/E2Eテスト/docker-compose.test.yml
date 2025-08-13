@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # アプリケーションサーバー
+  app:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      - NODE_ENV=test
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+  # E2Eテスト実行環境（Node.js v20）
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.node20
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    environment:
+      - BASE_URL=http://app:8086
+      - CI=true
+      - NODE_ENV=test
+    depends_on:
+      app:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'アプリケーションサーバーの起動を待機中...' &&
+        npx wait-on http://app:8086 --timeout 60000 &&
+        echo 'E2Eテスト実行開始' &&
+        npm run test:enhanced
+      "
+    networks:
+      - test-network
+
+  # 拡張テスト実行（全ブラウザ）
+  e2e-tests-all:
+    build:
+      context: .
+      dockerfile: Dockerfile.node20
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    environment:
+      - BASE_URL=http://app:8086
+      - CI=true
+      - NODE_ENV=test
+    depends_on:
+      app:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'アプリケーションサーバーの起動を待機中...' &&
+        npx wait-on http://app:8086 --timeout 60000 &&
+        echo 'All browser E2Eテスト実行開始' &&
+        npx playwright test critical-path-enhanced.spec.js --project=chromium &&
+        npx playwright test critical-path-enhanced.spec.js --project=firefox &&
+        npx playwright test critical-path-enhanced.spec.js --project=webkit
+      "
+    networks:
+      - test-network
+
+  # パフォーマンステスト実行
+  performance-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.node20
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    environment:
+      - BASE_URL=http://app:8086
+      - CI=true
+      - NODE_ENV=test
+    depends_on:
+      app:
+        condition: service_healthy
+    command: >
+      sh -c "
+        npx wait-on http://app:8086 --timeout 60000 &&
+        echo 'パフォーマンステスト実行開始' &&
+        npx playwright test performance.spec.js --project=performance
+      "
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-results:
+  playwright-report:

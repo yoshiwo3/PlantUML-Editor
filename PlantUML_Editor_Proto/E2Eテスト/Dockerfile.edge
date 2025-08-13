@@ -1,0 +1,36 @@
+# Microsoft Edge対応のPlaywright Dockerイメージ
+# Node.js v20環境で確実に動作
+FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# Microsoft Edgeのインストール（Playwrightイメージには含まれていない場合）
+RUN apt-get update && \
+    apt-get install -y wget gnupg && \
+    wget -q -O - https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list && \
+    apt-get update && \
+    apt-get install -y microsoft-edge-stable && \
+    rm -rf /var/lib/apt/lists/*
+
+# package.jsonをコピー
+COPY package.json package-lock.json* ./
+
+# 依存関係のインストール
+RUN npm ci || npm install
+
+# Playwrightブラウザのインストール（Edge含む）
+RUN npx playwright install msedge chromium firefox webkit
+RUN npx playwright install-deps
+
+# テストファイルをコピー
+COPY . .
+
+# 環境変数設定
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV NODE_ENV=test
+
+# テスト実行用のエントリーポイント
+ENTRYPOINT ["npm", "run"]
+CMD ["test:edge:docker"]

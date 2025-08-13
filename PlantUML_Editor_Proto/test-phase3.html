@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3 動作テスト</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-result.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        #test-textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .debug-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Phase 3 システム動作テスト</h1>
+    
+    <div class="test-section">
+        <h2>1. モジュール読み込みテスト</h2>
+        <div id="module-test-results"></div>
+        <button onclick="testModuleLoading()">モジュール読み込みテスト実行</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. インスタンス作成テスト</h2>
+        <div id="instance-test-results"></div>
+        <button onclick="testInstanceCreation()">インスタンス作成テスト実行</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 差分計算テスト</h2>
+        <div id="diff-test-results"></div>
+        <button onclick="testDiffCalculation()">差分計算テスト実行</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. カーソル管理テスト</h2>
+        <textarea id="test-textarea" placeholder="この文字入力エリアでカーソル管理をテストします...">@startuml
+Alice -> Bob: Hello
+Bob -> Alice: Hi
+@enduml</textarea>
+        <div id="cursor-test-results"></div>
+        <button onclick="testCursorManagement()">カーソル管理テスト実行</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 統合テスト</h2>
+        <div id="integration-test-results"></div>
+        <button onclick="testIntegration()">統合テスト実行</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>6. パフォーマンステスト</h2>
+        <div id="performance-test-results"></div>
+        <button onclick="testPerformance()">パフォーマンステスト実行</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>デバッグ情報</h2>
+        <div id="debug-info" class="debug-info"></div>
+        <button onclick="updateDebugInfo()">デバッグ情報更新</button>
+    </div>
+
+    <!-- CDNライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    
+    <!-- Phase 3モジュール -->
+    <script type="module" src="TokenTypes.js"></script>
+    <script type="module" src="ASTTypes.js"></script>
+    <script type="module" src="PlantUMLASTParser.js"></script>
+    <script type="module" src="RealtimeSyncManager.js"></script>
+    <script type="module" src="DiffCalculator.js"></script>
+    <script type="module" src="CursorStateManager.js"></script>
+
+    <script>
+        // テスト結果を表示するユーティリティ関数
+        function showResult(containerId, message, type = 'success') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            container.appendChild(div);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        // グローバル変数
+        let testInstances = {};
+
+        // 1. モジュール読み込みテスト
+        async function testModuleLoading() {
+            clearResults('module-test-results');
+            
+            try {
+                // ES6モジュールのインポート
+                if (typeof import === 'function') {
+                    const modules = await Promise.all([
+                        import('./RealtimeSyncManager.js'),
+                        import('./DiffCalculator.js'),
+                        import('./CursorStateManager.js')
+                    ]);
+                    
+                    const [syncModule, diffModule, cursorModule] = modules;
+                    
+                    if (syncModule.default || syncModule.RealtimeSyncManager) {
+                        showResult('module-test-results', '✅ RealtimeSyncManager モジュール読み込み成功');
+                    } else {
+                        showResult('module-test-results', '❌ RealtimeSyncManager モジュール読み込み失敗', 'error');
+                    }
+                    
+                    if (diffModule.default || diffModule.DiffCalculator) {
+                        showResult('module-test-results', '✅ DiffCalculator モジュール読み込み成功');
+                    } else {
+                        showResult('module-test-results', '❌ DiffCalculator モジュール読み込み失敗', 'error');
+                    }
+                    
+                    if (cursorModule.default || cursorModule.CursorStateManager) {
+                        showResult('module-test-results', '✅ CursorStateManager モジュール読み込み成功');
+                    } else {
+                        showResult('module-test-results', '❌ CursorStateManager モジュール読み込み失敗', 'error');
+                    }
+                    
+                } else {
+                    // フォールバック：グローバル変数チェック
+                    if (typeof window.RealtimeSyncManager !== 'undefined') {
+                        showResult('module-test-results', '✅ RealtimeSyncManager (グローバル)');
+                    } else {
+                        showResult('module-test-results', '⚠️ RealtimeSyncManager が見つかりません', 'warning');
+                    }
+                    
+                    if (typeof window.DiffCalculator !== 'undefined') {
+                        showResult('module-test-results', '✅ DiffCalculator (グローバル)');
+                    } else {
+                        showResult('module-test-results', '⚠️ DiffCalculator が見つかりません', 'warning');
+                    }
+                    
+                    if (typeof window.CursorStateManager !== 'undefined') {
+                        showResult('module-test-results', '✅ CursorStateManager (グローバル)');
+                    } else {
+                        showResult('module-test-results', '⚠️ CursorStateManager が見つかりません', 'warning');
+                    }
+                }
+                
+            } catch (error) {
+                showResult('module-test-results', `❌ モジュール読み込みエラー: ${error.message}`, 'error');
+                console.error('Module loading error:', error);
+            }
+        }
+
+        // 2. インスタンス作成テスト
+        async function testInstanceCreation() {
+            clearResults('instance-test-results');
+            
+            try {
+                // DiffCalculator のテスト
+                if (typeof window.DiffCalculator !== 'undefined') {
+                    testInstances.diffCalculator = new window.DiffCalculator();
+                    showResult('instance-test-results', '✅ DiffCalculator インスタンス作成成功');
+                } else {
+                    showResult('instance-test-results', '⚠️ DiffCalculator クラスが利用できません', 'warning');
+                }
+                
+                // CursorStateManager のテスト
+                if (typeof window.CursorStateManager !== 'undefined') {
+                    testInstances.cursorManager = new window.CursorStateManager();
+                    showResult('instance-test-results', '✅ CursorStateManager インスタンス作成成功');
+                } else {
+                    showResult('instance-test-results', '⚠️ CursorStateManager クラスが利用できません', 'warning');
+                }
+                
+                // RealtimeSyncManager のテスト（モックエディターで）
+                if (typeof window.RealtimeSyncManager !== 'undefined') {
+                    const mockEditor = {
+                        selectedActors: new Set(['Alice', 'Bob']),
+                        actions: [],
+                        currentMode: 'actor-action'
+                    };
+                    testInstances.syncManager = new window.RealtimeSyncManager(mockEditor);
+                    showResult('instance-test-results', '✅ RealtimeSyncManager インスタンス作成成功');
+                } else {
+                    showResult('instance-test-results', '⚠️ RealtimeSyncManager クラスが利用できません', 'warning');
+                }
+                
+            } catch (error) {
+                showResult('instance-test-results', `❌ インスタンス作成エラー: ${error.message}`, 'error');
+                console.error('Instance creation error:', error);
+            }
+        }
+
+        // 3. 差分計算テスト
+        function testDiffCalculation() {
+            clearResults('diff-test-results');
+            
+            if (!testInstances.diffCalculator) {
+                showResult('diff-test-results', '❌ DiffCalculator インスタンスが存在しません', 'error');
+                return;
+            }
+            
+            try {
+                const oldCode = `@startuml
+Alice -> Bob: Hello
+@enduml`;
+                
+                const newCode = `@startuml
+Alice -> Bob: Hello
+Bob -> Alice: Hi there!
+@enduml`;
+                
+                const diff = testInstances.diffCalculator.calculateCodeDiff(oldCode, newCode);
+                
+                if (diff.hasChanges) {
+                    showResult('diff-test-results', '✅ コード差分検出成功');
+                    showResult('diff-test-results', `📊 変更統計: 追加${diff.stats?.linesAdded || 0}行, 削除${diff.stats?.linesRemoved || 0}行`);
+                } else {
+                    showResult('diff-test-results', '⚠️ 差分が検出されませんでした', 'warning');
+                }
+                
+                // GUI差分テスト
+                const oldState = { selectedActors: new Set(['Alice']), actions: [] };
+                const newState = { selectedActors: new Set(['Alice', 'Bob']), actions: [{ type: 'message', from: 'Alice', to: 'Bob', message: 'Hello' }] };
+                
+                const guiDiff = testInstances.diffCalculator.calculateGUIDiff(oldState, newState);
+                
+                if (guiDiff.hasChanges) {
+                    showResult('diff-test-results', '✅ GUI差分検出成功');
+                } else {
+                    showResult('diff-test-results', '⚠️ GUI差分が検出されませんでした', 'warning');
+                }
+                
+                // 統計情報の表示
+                const stats = testInstances.diffCalculator.getStats();
+                showResult('diff-test-results', `📈 差分計算統計: 計算回数${stats.calculations}, キャッシュヒット率${stats.cacheHitRate || '0%'}`);
+                
+            } catch (error) {
+                showResult('diff-test-results', `❌ 差分計算エラー: ${error.message}`, 'error');
+                console.error('Diff calculation error:', error);
+            }
+        }
+
+        // 4. カーソル管理テスト
+        function testCursorManagement() {
+            clearResults('cursor-test-results');
+            
+            if (!testInstances.cursorManager) {
+                showResult('cursor-test-results', '❌ CursorStateManager インスタンスが存在しません', 'error');
+                return;
+            }
+            
+            try {
+                const textarea = document.getElementById('test-textarea');
+                
+                if (!textarea) {
+                    showResult('cursor-test-results', '❌ テスト用テキストエリアが見つかりません', 'error');
+                    return;
+                }
+                
+                // カーソル位置の保存
+                textarea.focus();
+                textarea.setSelectionRange(10, 10);
+                
+                const savedState = testInstances.cursorManager.saveCursorState(textarea, 'test');
+                
+                if (savedState) {
+                    showResult('cursor-test-results', '✅ カーソル状態保存成功');
+                    showResult('cursor-test-results', `📍 カーソル位置: ${savedState.selectionStart}-${savedState.selectionEnd}`);
+                } else {
+                    showResult('cursor-test-results', '❌ カーソル状態保存失敗', 'error');
+                    return;
+                }
+                
+                // カーソル位置を変更
+                textarea.setSelectionRange(20, 25);
+                
+                // カーソル位置を復元
+                const restored = testInstances.cursorManager.restoreCursorState(textarea, 'test');
+                
+                if (restored) {
+                    showResult('cursor-test-results', '✅ カーソル状態復元成功');
+                    
+                    // 復元されたかチェック
+                    if (textarea.selectionStart === savedState.selectionStart && 
+                        textarea.selectionEnd === savedState.selectionEnd) {
+                        showResult('cursor-test-results', '✅ カーソル位置が正確に復元されました');
+                    } else {
+                        showResult('cursor-test-results', '⚠️ カーソル位置の復元が不完全です', 'warning');
+                    }
+                } else {
+                    showResult('cursor-test-results', '❌ カーソル状態復元失敗', 'error');
+                }
+                
+                // 統計情報
+                const stats = testInstances.cursorManager.getStats();
+                showResult('cursor-test-results', `📈 カーソル管理統計: 保存${stats.saves}回, 復元${stats.restores}回`);
+                
+            } catch (error) {
+                showResult('cursor-test-results', `❌ カーソル管理エラー: ${error.message}`, 'error');
+                console.error('Cursor management error:', error);
+            }
+        }
+
+        // 5. 統合テスト
+        function testIntegration() {
+            clearResults('integration-test-results');
+            
+            try {
+                if (!testInstances.syncManager) {
+                    showResult('integration-test-results', '❌ RealtimeSyncManager インスタンスが存在しません', 'error');
+                    return;
+                }
+                
+                // 同期状態のテスト
+                const syncStatus = testInstances.syncManager.getSyncStatus();
+                
+                if (syncStatus) {
+                    showResult('integration-test-results', '✅ 同期状態取得成功');
+                    showResult('integration-test-results', `🔄 同期状態: ${syncStatus.isActive ? 'アクティブ' : '非アクティブ'}`);
+                    showResult('integration-test-results', `📊 エラー数: ${syncStatus.errorCount || 0}`);
+                } else {
+                    showResult('integration-test-results', '⚠️ 同期状態の取得に失敗', 'warning');
+                }
+                
+                // 手動同期のテスト
+                testInstances.syncManager.manualSync('both');
+                showResult('integration-test-results', '✅ 手動同期実行成功');
+                
+                showResult('integration-test-results', '🎉 統合テスト完了');
+                
+            } catch (error) {
+                showResult('integration-test-results', `❌ 統合テストエラー: ${error.message}`, 'error');
+                console.error('Integration test error:', error);
+            }
+        }
+
+        // 6. パフォーマンステスト
+        function testPerformance() {
+            clearResults('performance-test-results');
+            
+            try {
+                if (!testInstances.diffCalculator) {
+                    showResult('performance-test-results', '❌ DiffCalculator インスタンスが存在しません', 'error');
+                    return;
+                }
+                
+                showResult('performance-test-results', '🚀 パフォーマンステスト開始...');
+                
+                // 大量の差分計算テスト
+                const iterations = 100;
+                const startTime = performance.now();
+                
+                for (let i = 0; i < iterations; i++) {
+                    const oldCode = `@startuml\nAlice -> Bob: Message ${i}\n@enduml`;
+                    const newCode = `@startuml\nAlice -> Bob: Message ${i + 1}\n@enduml`;
+                    testInstances.diffCalculator.calculateCodeDiff(oldCode, newCode);
+                }
+                
+                const endTime = performance.now();
+                const totalTime = endTime - startTime;
+                const avgTime = totalTime / iterations;
+                
+                showResult('performance-test-results', `⏱️ ${iterations}回の差分計算完了`);
+                showResult('performance-test-results', `📊 総時間: ${totalTime.toFixed(2)}ms`);
+                showResult('performance-test-results', `📊 平均時間: ${avgTime.toFixed(2)}ms/回`);
+                
+                const stats = testInstances.diffCalculator.getStats();
+                showResult('performance-test-results', `💾 キャッシュヒット率: ${stats.cacheHitRate || '0%'}`);
+                
+                if (avgTime < 5) {
+                    showResult('performance-test-results', '🏆 優秀なパフォーマンスです！');
+                } else if (avgTime < 10) {
+                    showResult('performance-test-results', '✅ 良好なパフォーマンスです', 'warning');
+                } else {
+                    showResult('performance-test-results', '⚠️ パフォーマンス改善の余地があります', 'warning');
+                }
+                
+            } catch (error) {
+                showResult('performance-test-results', `❌ パフォーマンステストエラー: ${error.message}`, 'error');
+                console.error('Performance test error:', error);
+            }
+        }
+
+        // デバッグ情報の更新
+        function updateDebugInfo() {
+            const debugContainer = document.getElementById('debug-info');
+            
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                instances: {
+                    diffCalculator: testInstances.diffCalculator ? 'インスタンス化済み' : '未作成',
+                    cursorManager: testInstances.cursorManager ? 'インスタンス化済み' : '未作成',
+                    syncManager: testInstances.syncManager ? 'インスタンス化済み' : '未作成'
+                },
+                globalObjects: {
+                    RealtimeSyncManager: typeof window.RealtimeSyncManager,
+                    DiffCalculator: typeof window.DiffCalculator,
+                    CursorStateManager: typeof window.CursorStateManager
+                },
+                performance: {
+                    memory: performance.memory ? {
+                        used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) + ' MB',
+                        total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024) + ' MB'
+                    } : '利用不可'
+                }
+            };
+            
+            debugContainer.innerHTML = `<pre>${JSON.stringify(debugInfo, null, 2)}</pre>`;
+        }
+
+        // ページ読み込み時に自動実行
+        window.addEventListener('load', () => {
+            console.log('Phase 3 テストページが読み込まれました');
+            updateDebugInfo();
+        });
+
+        // エラーイベントのキャッチ
+        window.addEventListener('error', (event) => {
+            console.error('グローバルエラー:', event.error);
+            const debugContainer = document.getElementById('debug-info');
+            if (debugContainer) {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.color = 'red';
+                errorDiv.style.marginTop = '10px';
+                errorDiv.innerHTML = `<strong>エラー:</strong> ${event.error?.message || event.message}`;
+                debugContainer.appendChild(errorDiv);
+            }
+        });
+    </script>
+</body>
+</html>

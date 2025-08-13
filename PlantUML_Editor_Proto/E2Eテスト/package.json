@@ -1,0 +1,56 @@
+{
+  "name": "plantuml-editor-e2e-tests",
+  "version": "1.0.0",
+  "description": "PlantUMLエディタのE2Eテスト - Phase 2対応",
+  "scripts": {
+    "test": "node test-docker.js",
+    "test:firefox": "node test-docker.js firefox",
+    "test:webkit": "node test-docker.js webkit",
+    "test:all": "npm run test && npm run test:firefox && npm run test:webkit",
+    "test:simple": "node simple-test-cjs.js",
+    "test:local": "node simple-test-cjs.js",
+    "test:edge": "node test-edge-local.cjs",
+    "test:edge:docker": "node test-edge-docker.js",
+    "test:playwright": "node playwright-runner.cjs test",
+    "test:playwright:headed": "node playwright-runner.cjs test:headed",
+    "test:playwright:debug": "node playwright-runner.cjs test:debug",
+    "test:playwright:ui": "node playwright-runner.cjs test:ui",
+    "test:playwright:chromium": "node playwright-runner.cjs test:chromium",
+    "test:playwright:firefox": "node playwright-runner.cjs test:firefox",
+    "test:playwright:webkit": "node playwright-runner.cjs test:webkit",
+    "test:playwright:edge": "node playwright-runner.cjs test:edge",
+    "test:playwright:docker": "node playwright-runner.cjs test:docker",
+    "test:playwright:mobile": "node playwright-runner.cjs test:mobile",
+    "test:critical": "node playwright-runner.cjs test:critical",
+    "test:performance": "node playwright-runner.cjs test:performance",
+    "report": "node playwright-runner.cjs show-report",
+    "setup": "npx playwright install chromium firefox webkit msedge",
+    "start:server": "cd .. && npx http-server -p 8086",
+    "codegen": "node playwright-runner.cjs codegen",
+    
+    "test:phase2": "node docker-test-runner.js docker enhanced chromium",
+    "test:phase2:local": "node docker-test-runner.js local enhanced chromium",
+    "test:phase2:all": "node docker-test-runner.js docker all chromium",
+    "test:phase2:firefox": "node docker-test-runner.js docker enhanced firefox",
+    "test:phase2:webkit": "node docker-test-runner.js docker enhanced webkit",
+    "test:phase2:edge": "node docker-test-runner.js docker enhanced edge",
+    "test:phase2:critical": "node docker-test-runner.js docker critical chromium",
+    "test:phase2:performance": "node docker-test-runner.js docker performance chromium",
+    "test:enhanced": "npx playwright test critical-path-enhanced.spec.js --project=chromium",
+    "test:enhanced:headed": "npx playwright test critical-path-enhanced.spec.js --project=chromium --headed",
+    "test:enhanced:debug": "npx playwright test critical-path-enhanced.spec.js --project=chromium --debug",
+    "test:enhanced:docker": "node docker-test-runner.js docker enhanced",
+    "test:cp002": "npx playwright test critical-path-enhanced.spec.js --grep='CP-002'",
+    "test:cp003": "npx playwright test critical-path-enhanced.spec.js --grep='CP-003'",
+    "test:cp004": "npx playwright test critical-path-enhanced.spec.js --grep='CP-004'",
+    "test:cp005": "npx playwright test critical-path-enhanced.spec.js --grep='CP-005'"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  },
+  "author": "Claude Code",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

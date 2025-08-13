@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # PlantUMLエディタアプリケーション
+  plantuml-app:
+    image: node:20-alpine
+    container_name: plantuml-editor
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "8086:8086"
+    command: sh -c "npm install -g http-server && http-server -p 8086 -a 0.0.0.0"
+    networks:
+      - e2e-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8086"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # E2Eテスト実行環境
+  e2e-tests:
+    build:
+      context: ./E2Eテスト
+      dockerfile: Dockerfile
+    container_name: e2e-test-runner
+    depends_on:
+      plantuml-app:
+        condition: service_healthy
+    volumes:
+      - ./E2Eテスト:/app
+      - ./E2Eテスト/test-results:/app/test-results
+    environment:
+      - BASE_URL=http://plantuml-app:8086
+      - CI=true
+    networks:
+      - e2e-network
+    command: test
+
+networks:
+  e2e-network:
+    driver: bridge

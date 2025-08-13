@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>PlantUML Editor - 複雑フロー機能テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-section h2 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .test-buttons {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 PlantUML Editor - 複雑フロー機能テスト</h1>
+        
+        <div class="test-section">
+            <h2>📌 テスト概要</h2>
+            <p>このページでは、PlantUML Editorの複雑なフロー機能（条件分岐、ループ、並行処理）をテストします。</p>
+            <ul>
+                <li>✅ 条件分岐（alt/opt）のアクター選択</li>
+                <li>✅ ループ処理のアクター選択</li>
+                <li>✅ 並行処理（par/else/end）のアクター選択とKroki対応</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>1️⃣ 条件分岐テスト</h2>
+            <p>条件分岐でアクターがドロップダウンから選択できることを確認</p>
+            <div class="test-buttons">
+                <button onclick="testCondition()">条件分岐機能をテスト</button>
+            </div>
+            <div id="condition-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2️⃣ ループ処理テスト</h2>
+            <p>ループ内のアクションでアクターが選択できることを確認</p>
+            <div class="test-buttons">
+                <button onclick="testLoop()">ループ機能をテスト</button>
+            </div>
+            <div id="loop-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3️⃣ 並行処理テスト（Kroki対応）</h2>
+            <p>並行処理でpar/else/end構文が正しく生成されることを確認</p>
+            <div class="test-buttons">
+                <button onclick="testParallel()">並行処理機能をテスト</button>
+            </div>
+            <div id="parallel-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4️⃣ 統合テスト</h2>
+            <p>全機能を組み合わせた複雑なフローのテスト</p>
+            <div class="test-buttons">
+                <button onclick="testIntegrated()">統合テスト実行</button>
+            </div>
+            <div id="integrated-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 PlantUML Editor起動</h2>
+            <p>実際のエディターを新しいウィンドウで開きます</p>
+            <div class="test-buttons">
+                <button onclick="openEditor()">エディターを開く</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function testCondition() {
+            const resultDiv = document.getElementById('condition-result');
+            resultDiv.innerHTML = `
+                <h3>✅ テスト項目：</h3>
+                <ol>
+                    <li>条件分岐タブをクリック</li>
+                    <li>条件名に「在庫確認」と入力</li>
+                    <li>「真の場合」にアクション追加
+                        <ul>
+                            <li>送信元：ドロップダウンから選択可能か確認</li>
+                            <li>送信先：ドロップダウンから選択可能か確認</li>
+                            <li>処理内容：「在庫引当」と入力</li>
+                        </ul>
+                    </li>
+                    <li>生成されるPlantUMLコードを確認</li>
+                </ol>
+                <pre>
+alt 在庫確認
+  "システム" -> "在庫管理": 在庫引当
+else
+  "システム" -> "顧客": 在庫なし通知
+end
+                </pre>
+                <p class="success">👉 エディターを開いて実際にテストしてください</p>
+            `;
+        }
+
+        function testLoop() {
+            const resultDiv = document.getElementById('loop-result');
+            resultDiv.innerHTML = `
+                <h3>✅ テスト項目：</h3>
+                <ol>
+                    <li>ループタブをクリック</li>
+                    <li>ループ条件に「最大3回」と入力</li>
+                    <li>アクション追加
+                        <ul>
+                            <li>送信元：ドロップダウンから選択可能か確認</li>
+                            <li>送信先：ドロップダウンから選択可能か確認</li>
+                            <li>処理内容：「リトライ処理」と入力</li>
+                        </ul>
+                    </li>
+                    <li>生成されるPlantUMLコードを確認</li>
+                </ol>
+                <pre>
+loop 最大3回
+  "システム" -> "決済API": リトライ処理
+  "決済API" --> "システム": 結果返却
+end
+                </pre>
+                <p class="success">👉 エディターを開いて実際にテストしてください</p>
+            `;
+        }
+
+        function testParallel() {
+            const resultDiv = document.getElementById('parallel-result');
+            resultDiv.innerHTML = `
+                <h3>✅ テスト項目：</h3>
+                <ol>
+                    <li>並行処理タブをクリック</li>
+                    <li>並行処理1にアクション追加
+                        <ul>
+                            <li>送信元：ドロップダウンから選択可能か確認</li>
+                            <li>送信先：ドロップダウンから選択可能か確認</li>
+                            <li>処理内容：「在庫確認」と入力</li>
+                        </ul>
+                    </li>
+                    <li>並行処理2にアクション追加
+                        <ul>
+                            <li>送信元：ドロップダウンから選択可能か確認</li>
+                            <li>送信先：ドロップダウンから選択可能か確認</li>
+                            <li>処理内容：「決済処理」と入力</li>
+                        </ul>
+                    </li>
+                    <li>生成されるPlantUMLコードを確認（<strong>elseが使用されていること</strong>）</li>
+                </ol>
+                <pre>
+par
+  "システム" -> "在庫管理": 在庫確認
+  "在庫管理" --> "システム": 在庫OK
+else  <-- ⚠️ Kroki対応のため、andではなくelseを使用
+  "システム" -> "決済処理": 決済実行
+  "決済処理" --> "システム": 決済完了
+end
+                </pre>
+                <p class="success">👉 Kroki APIの制限により、par/and/endではなくpar/else/endを使用します</p>
+            `;
+        }
+
+        function testIntegrated() {
+            const resultDiv = document.getElementById('integrated-result');
+            resultDiv.innerHTML = `
+                <h3>✅ 統合テストシナリオ：</h3>
+                <p>ECサイトの注文処理フロー（全機能使用）</p>
+                <ol>
+                    <li>顧客が注文送信（通常メッセージ）</li>
+                    <li>在庫確認（条件分岐）
+                        <ul>
+                            <li>在庫あり → 並行処理へ</li>
+                            <li>在庫なし → 在庫なし通知</li>
+                        </ul>
+                    </li>
+                    <li>並行処理（在庫引当と決済処理）</li>
+                    <li>決済リトライ（ループ処理）</li>
+                </ol>
+                
+                <h4>期待される結果：</h4>
+                <ul>
+                    <li>✅ 全てのアクター選択がドロップダウンで可能</li>
+                    <li>✅ 並行処理はpar/else/endで生成</li>
+                    <li>✅ 条件分岐とループが正しくネスト</li>
+                    <li>✅ Kroki APIでレンダリング成功</li>
+                </ul>
+                
+                <p class="success">👉 この複雑なシナリオをエディターで作成してテストしてください</p>
+            `;
+        }
+
+        function openEditor() {
+            window.open('index.html', '_blank');
+        }
+    </script>
+</body>
+</html>

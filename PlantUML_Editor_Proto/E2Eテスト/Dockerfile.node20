@@ -1,0 +1,28 @@
+# Node.js v20を使用したPlaywright E2Eテスト環境
+FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+
+# Node.js v20.18.0をインストール
+USER root
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
+
+# バージョン確認
+RUN node --version && npm --version
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# パッケージファイルをコピー
+COPY package*.json ./
+
+# 依存関係をインストール
+RUN npm ci
+
+# Playwrightブラウザをインストール
+RUN npx playwright install --with-deps
+
+# テストファイルをコピー
+COPY . .
+
+# デフォルトコマンド
+CMD ["npm", "run", "test:enhanced"]

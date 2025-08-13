@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>日本語→PlantUML 変換</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./annotation.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="./image-analyzer.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <div class="title">
+        <h1>日本語 → PlantUML 変換ツール</h1>
+        <p>自然文・半構造化テキストから、各種PlantUML図を生成し、Krokiで即時プレビューします。</p>
+      </div>
+      <div class="actions">
+        <button id="themeToggle" class="theme-toggle" aria-label="テーマ切替" title="テーマ切替">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+
+    <section class="controls">
+      <div class="row">
+        <label for="diagramType">図の種類</label>
+        <select id="diagramType">
+          <option value="auto">自動判定</option>
+          <option value="gantt">ガントチャート</option>
+          <option value="sequence">シーケンス図</option>
+          <option value="class">クラス図</option>
+          <option value="activity">アクティビティ図</option>
+          <option value="state">状態遷移図</option>
+          <option value="usecase">ユースケース図</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="mode">入力モード</label>
+        <select id="mode">
+          <option value="auto">自動</option>
+          <option value="semi">半構造化</option>
+          <option value="free">自然文</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="compat">互換モード</label>
+        <select id="compat">
+          <option value="latest">最新</option>
+          <option value="legacy-1.2022.14">レガシー(1.2022.14)</option>
+        </select>
+        <label for="sampleSelect" style="margin-left: 20px;">サンプル</label>
+        <select id="sampleSelect">
+          <option value="">サンプルを選択</option>
+          <optgroup label="ガント">
+            <option value="gantt-semi">ガント（半構造化・部門/依存/進捗）</option>
+            <option value="gantt-free">ガント（自然文・簡易）</option>
+          </optgroup>
+          <optgroup label="シーケンス">
+            <option value="seq-semi">シーケンス（半構造化）</option>
+            <option value="seq-free">シーケンス（自然文）</option>
+          </optgroup>
+          <optgroup label="クラス">
+            <option value="class-semi">クラス（半構造化）</option>
+            <option value="class-free">クラス（自然文）</option>
+          </optgroup>
+          <optgroup label="アクティビティ">
+            <option value="act-semi">アクティビティ（半構造化）</option>
+            <option value="act-free">アクティビティ（自然文）</option>
+          </optgroup>
+          <optgroup label="状態遷移">
+            <option value="state-semi">状態（半構造化）</option>
+            <option value="state-free">状態（自然文）</option>
+          </optgroup>
+          <optgroup label="ユースケース">
+            <option value="uc-semi">ユースケース（半構造化）</option>
+            <option value="uc-free">ユースケース（自然文）</option>
+          </optgroup>
+        </select>
+      </div>
+    </section>
+
+    <section class="io">
+      <div class="input">
+        <label for="input">日本語入力</label>
+        
+        <!-- 画像アップロード領域 -->
+        <div id="imageUploadArea" style="margin-bottom: 10px; padding: 20px; border: 2px dashed #cbd5e1; border-radius: 8px; text-align: center; background: rgba(248, 250, 252, 0.5);">
+          <div id="uploadPrompt">
+            <p style="margin: 0 0 10px 0; color: #64748b;">📷 画像から図を読み取る</p>
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <button id="selectImageBtn" style="padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
+              画像を選択
+            </button>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #94a3b8;">
+              またはドラッグ&ドロップ
+            </p>
+          </div>
+          <div id="imagePreview" style="display: none;">
+            <img id="previewImg" style="max-width: 100%; max-height: 200px; margin: 10px 0;">
+            <div style="margin-top: 10px;">
+              <button id="analyzeImageBtn" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px;">
+                🔍 画像を解析
+              </button>
+              <button id="clearImageBtn" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                ✕ クリア
+              </button>
+            </div>
+            <div id="analysisProgress" style="display: none; margin-top: 10px;">
+              <div style="padding: 10px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px;">
+                <span style="color: #92400e;">🔄 解析中...</span>
+                <div id="progressDetails" style="margin-top: 5px; font-size: 12px; color: #78350f;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <textarea id="input" placeholder="例: \nプロジェクト名: プロジェクトα\n開始日: 2025-08-10\nタスク: 仕様策定; 2025-08-10 〜 2025-08-20; 担当: 田中; 進捗: 50%\nタスク: 実装; 2025-08-21 〜 2025-09-10; 担当: 佐藤; 依存: 仕様策定"></textarea>
+        <div class="buttons">
+          <button id="btnConvert">PlantUMLを生成</button>
+          <button id="btnRender">プレビューを表示</button>
+        </div>
+      </div>
+      <div class="output">
+        <label for="plantuml">生成されたPlantUML <small id="detectedType" style="margin-left:8px;color:#6b7280"></small></label>
+        <textarea id="plantuml"></textarea>
+        <div class="buttons">
+          <button id="btnCopy">コードをコピー</button>
+          <button id="btnDownload">.pumlをダウンロード</button>
+        </div>
+        <small style="display:block;margin-top:6px;color:#64748b;">注: 「PlantUMLを生成」を押すとこの内容は上書きされます。手動編集後は「プレビューを表示」で即時プレビューできます。</small>
+      </div>
+    </section>
+
+    <section class="preview">
+      <div class="preview">
+        <label>プレビュー <small id="previewType" class="badge" style="margin-left:8px;color:#6b7280"></small> <small id="compatBadge" class="badge" style="margin-left:8px;color:#6b7280"></small></label>
+        
+        <!-- 注釈ツールバー -->
+        <div id="annotationToolbar" class="annotation-toolbar" style="display:none; margin: 10px 0; padding: 10px; background: #f3f4f6; border-radius: 8px;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div class="tool-group">
+              <label style="font-size: 14px; margin-right: 5px;">ツール:</label>
+              <button class="tool-btn" data-tool="pen" title="ペン">✏️</button>
+              <button class="tool-btn" data-tool="arrow" title="矢印">➡️</button>
+              <button class="tool-btn" data-tool="text" title="テキスト">📝</button>
+              <button class="tool-btn" data-tool="eraser" title="消しゴム">🗑️</button>
+            </div>
+            
+            <div class="tool-group">
+              <label style="font-size: 14px; margin-right: 5px;">色:</label>
+              <input type="color" id="annotationColor" value="#ff0000" style="width: 40px; height: 30px; border: none; border-radius: 4px; cursor: pointer;">
+            </div>
+            
+            <div class="tool-group">
+              <label style="font-size: 14px; margin-right: 5px;">太さ:</label>
+              <input type="range" id="strokeWidth" min="1" max="10" value="3" style="width: 80px;">
+              <span id="strokeWidthValue" style="font-size: 14px; margin-left: 5px;">3</span>
+            </div>
+            
+            <div class="tool-group">
+              <button id="undoBtn" class="action-btn" title="元に戻す">↩️ 元に戻す</button>
+              <button id="clearBtn" class="action-btn" title="全消去">🗑️ 全消去</button>
+            </div>
+            
+            <div class="tool-group">
+              <button id="saveAnnotation" class="action-btn" title="注釈を保存">💾 保存</button>
+              <button id="loadAnnotation" class="action-btn" title="注釈を読込">📂 読込</button>
+              <button id="exportAnnotation" class="action-btn" title="画像で出力">📷 出力</button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="preview" class="preview-area">
+          <div class="placeholder">ここにSVGプレビューが表示されます</div>
+        </div>
+        
+        <!-- 注釈モード切替ボタン -->
+        <div style="margin-top: 10px;">
+          <button id="toggleAnnotation" class="action-btn" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">
+            📝 注釈モードON/OFF
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="debug">
+      <h3>変換の詳細</h3>
+      <div id="warnings" class="warnings"></div>
+      <pre id="meta" class="meta" style="white-space:pre-wrap"></pre>
+    </section>
+  </main>
+
+  <footer>
+    <small>Powered by PlantUML & Kroki | ローカルWebアプリ（Docker）</small>
+  </footer>
+
+  <script src="./main.js"></script>
+</body>
+</html>
