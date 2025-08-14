@@ -3993,7 +3993,6 @@ EC --> Customer: 確認メール
 // アプリケーション初期化
 document.addEventListener('DOMContentLoaded', () => {
     const app = new PlantUMLEditor();
-    window.app = app; // グローバルにアクセス可能にする
     
     // カスタムパターンの読み込み
     const stored = localStorage.getItem('customPatterns');
