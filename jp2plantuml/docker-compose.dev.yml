@@ -1,0 +1,163 @@
+# 開発用Docker Compose設定
+# 開発効率化とデバッグサポートに最適化
+
+version: '3.8'
+
+services:
+  # ==============================================
+  # PlantUML Editor - 開発環境
+  # ==============================================
+  plantuml-editor:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+      target: dev-dependencies  # 開発依存関係含む
+    image: plantuml-editor:dev
+    container_name: plantuml-editor-dev
+    restart: unless-stopped
+    
+    ports:
+      - "3000:3000"   # メインアプリ
+      - "9229:9229"   # Node.js デバッガー
+    
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - KROKI_URL=https://kroki.io/plantuml/svg
+      - DEBUG=plantuml:*
+      - LOG_LEVEL=debug
+    
+    volumes:
+      # ソースコードをマウント（ホットリロード対応）
+      - .:/app
+      - /app/node_modules  # node_modulesは除外
+      - plantuml-logs:/app/logs
+    
+    command: npm run dev  # nodemonでホットリロード
+    
+    # ヘルスチェック
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # リソース制限
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # ==============================================
+  # Redis（キャッシュ・セッション管理）
+  # ==============================================
+  redis:
+    image: redis:7-alpine
+    container_name: plantuml-redis
+    restart: unless-stopped
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - redis-data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    
+    command: redis-server /usr/local/etc/redis/redis.conf
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==============================================
+  # Nginx（リバースプロキシ・静的ファイル）
+  # ==============================================
+  nginx:
+    image: nginx:alpine
+    container_name: plantuml-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "8080:80"
+      - "8443:443"
+    
+    volumes:
+      - ./config/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./public:/usr/share/nginx/html/static:ro
+      - plantuml-logs:/var/log/nginx
+    
+    depends_on:
+      - plantuml-editor
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==============================================
+  # テスト環境（E2E、ユニットテスト）
+  # ==============================================
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+      target: dev-dependencies
+    image: plantuml-editor:test
+    container_name: plantuml-test-runner
+    
+    environment:
+      - NODE_ENV=test
+      - CI=true
+    
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./coverage:/app/coverage
+    
+    command: npm run test:coverage
+    
+    depends_on:
+      - plantuml-editor
+
+  # ==============================================
+  # Playwright E2Eテスト環境
+  # ==============================================
+  e2e-tests:
+    image: mcr.microsoft.com/playwright:v1.40.0-focal
+    container_name: plantuml-e2e
+    
+    working_dir: /app
+    
+    environment:
+      - CI=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    
+    volumes:
+      - .:/app
+      - playwright-cache:/ms-playwright
+    
+    command: npm run test:e2e
+    
+    depends_on:
+      - plantuml-editor
+
+volumes:
+  redis-data:
+    driver: local
+  plantuml-logs:
+    driver: local
+  playwright-cache:
+    driver: local
+
+networks:
+  default:
+    name: plantuml-dev-network
+    driver: bridge

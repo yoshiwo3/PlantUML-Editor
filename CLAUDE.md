@@ -220,25 +220,143 @@ git push
 - 環境: http://localhost:8086
 - 詳細: `PRD_Ver1.0.md`
 
-## ⚠️ 重要: Node.js/Playwright互換性情報
+## 🧪 標準テスト環境定義
 
-### Playwright実行環境
-- **Playwright対応**: Node.js v20まで（v22は未対応）
-- **ローカル環境**: Node.js v22使用時はDocker環境必須
-- **Docker環境**: Node.js v20.18.0 + Playwright構築済み
+### Docker Playwright環境を標準テスト環境として採用
 
-### E2Eテスト実行方法
+#### テスト種別定義
+
+##### 1. 単体テスト（Unit Test）
+- **目的**: 個々の関数・モジュールの動作検証
+- **ツール**: Jest
+- **対象**: 
+  - PlantUMLParser.js - パーサー関数
+  - バリデーション関数
+  - ユーティリティ関数
+- **ファイル命名**: `*.unit.test.js`
+- **実行時間目標**: < 5秒
+
+##### 2. 統合テスト（Integration Test）
+- **目的**: 複数モジュールの連携動作検証
+- **ツール**: Jest + Playwright
+- **対象**:
+  - API エンドポイント間の連携
+  - フロントエンド-バックエンド通信
+  - PlantUML変換フロー全体
+- **ファイル命名**: `*.integration.test.js`
+- **実行時間目標**: < 30秒
+
+##### 3. E2Eテスト（End-to-End Test）
+- **目的**: ユーザー視点での全機能検証
+- **ツール**: Playwright
+- **対象**:
+  - 完全なユーザーシナリオ
+  - クロスブラウザ動作
+  - UI操作フロー
+- **ファイル命名**: `*.e2e.test.js` または `*.spec.js`
+- **実行時間目標**: < 2分
+
+#### テスト実行マトリックス
+
+| テスト種別 | カバレッジ目標 | 実行頻度 | ブラウザ |
+|-----------|--------------|----------|----------|
+| 単体テスト | 80%以上 | 各コミット | N/A |
+| 統合テスト | 70%以上 | プルリクエスト | Chromium |
+| E2Eテスト | 主要シナリオ100% | リリース前 | 全ブラウザ |
+
+#### 標準コマンド
 ```bash
-# Docker環境でのテスト実行（推奨）
-cd PlantUML_Editor_Proto/E2Eテスト
-docker-compose run --rm playwright npm test
+# すべてのテストはDockerで実行
+docker-compose -f docker-compose.permanent.yml run --rm playwright npm test
 
-# Phase2テスト実行
-cd docs/phase2
-docker-compose run --rm playwright npm run test:all
+# テスト種別ごとの実行
+docker-compose run --rm playwright npm run test:unit    # 単体
+docker-compose run --rm playwright npm run test:integration # 統合
+docker-compose run --rm playwright npm run test:e2e     # E2E
+
+# カバレッジレポート付き実行
+docker-compose run --rm playwright npm run test:coverage
+
+# 特定ブラウザでのE2Eテスト
+docker-compose run --rm playwright npm run test:e2e:chromium
+docker-compose run --rm playwright npm run test:e2e:firefox
+docker-compose run --rm playwright npm run test:e2e:webkit
+docker-compose run --rm playwright npm run test:e2e:edge
 ```
 
-詳細: `PlantUML_Editor_Proto/E2Eテスト/README_DOCKER.md`
+#### テストディレクトリ構造
+```
+tests/
+├── unit/               # 単体テスト
+│   ├── parser/        # パーサー関連
+│   └── utils/         # ユーティリティ
+├── integration/        # 統合テスト
+│   ├── api/          # API連携
+│   └── workflow/     # ワークフロー
+└── e2e/               # E2Eテスト
+    ├── scenarios/    # ユーザーシナリオ
+    └── cross-browser/ # クロスブラウザ
+```
+
+#### 環境仕様
+- **Node.js**: v20.18.0（固定）
+- **Playwright**: v1.48.0
+- **Jest**: v29.x
+- **ブラウザ**: Chromium, Firefox, WebKit, MSEdge（永続化済み）
+- **イメージ**: `plantuml-e2e-permanent:latest`
+
+### Docker環境の利点
+1. **再現性100%**: すべての開発者が同一環境
+2. **セットアップ簡略化**: Docker一つで全環境構築
+3. **クロスブラウザテスト**: 4ブラウザを標準装備
+4. **CI/CD統合**: GitHub Actionsと完全互換
+
+### テスト戦略とベストプラクティス
+
+#### テスト作成原則
+1. **AAA パターン**: Arrange（準備）、Act（実行）、Assert（検証）
+2. **独立性**: 各テストは他のテストに依存しない
+3. **明確な命名**: `should_[期待される動作]_when_[条件]`
+4. **モック最小化**: 統合・E2Eテストでは実環境に近い状態を維持
+
+#### CI/CD統合
+- **GitHub Actions**: 自動テスト実行
+- **プルリクエスト**: 統合テスト必須
+- **マージ条件**: 全テスト合格 + カバレッジ基準達成
+
+### テスト実績（2025-08-14検証済み）
+- **総合成功率**: 90.6%（29/32テスト）
+- **WebKit成功率**: 100%（9/9テスト、DOM読込3ms達成）
+- **クロスブラウザ**: 全ブラウザ100%成功
+- **パフォーマンス**: 起動時間平均1秒、DOM読込平均30ms
+
+### 開発フロー
+```bash
+# 開発開始
+git pull
+docker-compose build  # 初回のみ
+
+# 開発中のテスト
+docker-compose run --rm playwright npm test
+
+# コミット前の全テスト
+docker-compose run --rm playwright npm run test:all
+
+# CI/CDで同じ環境でテスト
+git push
+```
+
+### 永続化済みDockerイメージ
+```bash
+# WebKit含む全ブラウザ永続化済み
+cd PlantUML_Editor_Proto/E2Eテスト/docs/phase2
+docker-compose -f docker-compose.permanent.yml up
+```
+
+詳細: 
+- `DOCKER_TEST_STANDARD_PROPOSAL.md` - 標準化提案書
+- `CI_CD_INTEGRATION.md` - CI/CD統合ガイド
+- `WEBKIT_PERSISTENCE.md` - WebKit永続化レポート
 
 ## プロジェクト構造
 

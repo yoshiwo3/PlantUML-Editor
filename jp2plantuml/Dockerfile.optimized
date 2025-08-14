@@ -1,0 +1,90 @@
+# マルチステージDockerfile - PlantUML Editor最適化版
+# セキュリティ、パフォーマンス、サイズを重視した設計
+
+# ==============================================
+# Stage 1: 依存関係インストール（キャッシュ層）
+# ==============================================
+FROM node:20-alpine AS dependencies
+
+# セキュリティ：非rootユーザーでの実行
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nextjs -u 1001
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# パッケージ情報をコピー（キャッシュ最適化）
+COPY package*.json ./
+
+# セキュリティアップデート + 必要パッケージのインストール
+RUN apk update && apk upgrade \
+    && apk add --no-cache \
+        dumb-init \
+        curl \
+        ca-certificates \
+    && rm -rf /var/cache/apk/*
+
+# 依存関係インストール（本番用）
+RUN npm ci --only=production \
+    && npm cache clean --force
+
+# ==============================================
+# Stage 2: 開発依存関係（テスト・ビルド用）
+# ==============================================
+FROM dependencies AS dev-dependencies
+
+# 開発依存関係インストール
+RUN npm ci
+
+# ソースコードコピー
+COPY . .
+
+# テスト実行（オプション：--target=dev-dependencies でテスト付きビルド）
+RUN npm run test
+
+# ==============================================
+# Stage 3: 本番実行環境（最小構成）
+# ==============================================
+FROM node:20-alpine AS production
+
+# セキュリティ：非rootユーザー作成
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nextjs -u 1001
+
+# セキュリティアップデート
+RUN apk update && apk upgrade \
+    && apk add --no-cache dumb-init \
+    && rm -rf /var/cache/apk/*
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# 依存関係のみコピー（最小構成）
+COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs package*.json ./
+
+# アプリケーションファイルコピー
+COPY --chown=nextjs:nodejs server.js ./
+COPY --chown=nextjs:nodejs src/ ./src/
+COPY --chown=nextjs:nodejs public/ ./public/
+
+# 非rootユーザーに切り替え
+USER nextjs
+
+# 環境変数設定
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV NPM_CONFIG_CACHE=/tmp/.npm
+
+# ヘルスチェック設定
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# ポート公開
+EXPOSE 3000
+
+# dumb-initでPID 1問題を回避
+ENTRYPOINT ["dumb-init", "--"]
+
+# アプリケーション起動
+CMD ["node", "server.js"]

@@ -1,0 +1,151 @@
+# CI/CD環境用に最適化されたDockerfile
+FROM node:20.18.0-slim
+
+# 環境変数設定
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NODE_ENV=test
+ENV CI=true
+ENV DOCKER_ENV=true
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
+
+# 作業ディレクトリ
+WORKDIR /app
+
+# システムパッケージインストール（キャッシュ効率化）
+RUN apt-get update && apt-get install -y \
+    # Playwright依存関係
+    wget \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgbm1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    lsb-release \
+    xdg-utils \
+    # Firefox依存関係
+    libdbus-glib-1-2 \
+    libxt6 \
+    # WebKit依存関係
+    libwoff1 \
+    libopus0 \
+    libwebp7 \
+    libwebpdemux2 \
+    libenchant-2-2 \
+    libgudev-1.0-0 \
+    libsecret-1-0 \
+    libhyphen0 \
+    libgdk-pixbuf2.0-0 \
+    libegl1 \
+    libnotify4 \
+    libxslt1.1 \
+    libevent-2.1-7 \
+    libgles2 \
+    libvpx7 \
+    libxkbcommon0 \
+    libepoxy0 \
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    libgstreamer-gl1.0-0 \
+    libgstreamer-plugins-bad1.0-0 \
+    libharfbuzz-icu0 \
+    libmanette-0.2-0 \
+    # MSEdge用
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# MSEdgeリポジトリ追加
+RUN wget -q -O - https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list \
+    && apt-get update \
+    && apt-get install -y microsoft-edge-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+# package.jsonファイルをコピー（キャッシュ効率化）
+COPY package*.json ./
+
+# npm依存関係インストール
+RUN npm ci --only=production
+
+# Playwrightブラウザインストール（キャッシュレイヤー）
+RUN npx playwright install chromium firefox webkit msedge
+
+# アプリケーションファイルをコピー
+COPY . .
+
+# ヘルスチェック用スクリプト
+RUN echo '#!/bin/bash\nnode -e "console.log(\"Playwright CI container ready\")"' > /healthcheck.sh \
+    && chmod +x /healthcheck.sh
+
+# CI用の起動スクリプト
+RUN cat > /entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "========================================="
+echo "  PlantUML E2E Test CI Environment"
+echo "========================================="
+echo "Node.js: $(node -v)"
+echo "NPM: $(npm -v)"
+echo "Environment: CI/CD"
+echo ""
+
+# ブラウザ確認
+echo "Checking installed browsers..."
+npx playwright --version
+
+# WebKit特別処理
+if [ "$TEST_WEBKIT" = "true" ]; then
+    echo "Configuring WebKit environment..."
+    export WEBKIT_DISABLE_COMPOSITING_MODE=1
+    export WEBKIT_FORCE_SANDBOX=0
+fi
+
+# テスト実行
+if [ -z "$1" ]; then
+    echo "Running default test suite..."
+    npm run test:ci
+else
+    echo "Running: $@"
+    exec "$@"
+fi
+EOF
+RUN chmod +x /entrypoint.sh
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD /healthcheck.sh || exit 1
+
+# エントリーポイント
+ENTRYPOINT ["/entrypoint.sh"]
+
+# デフォルトコマンド
+CMD ["npm", "run", "test:ci"]

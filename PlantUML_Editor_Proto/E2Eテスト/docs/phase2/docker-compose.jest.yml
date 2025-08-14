@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  jest:
+    build:
+      context: ../../../
+      dockerfile: ./E2Eテスト/docs/phase2/Dockerfile.jest
+    volumes:
+      - ../../../__tests__:/app/__tests__
+      - ../../../jest.config.js:/app/jest.config.js
+      - ../../../jest.setup.js:/app/jest.setup.js
+      - ../../../.babelrc:/app/.babelrc
+    environment:
+      - NODE_ENV=test
+    command: npm run test:unit

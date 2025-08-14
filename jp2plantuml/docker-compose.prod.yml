@@ -1,0 +1,200 @@
+# 本番用Docker Compose設定
+# セキュリティ、パフォーマンス、可用性を重視
+
+version: '3.8'
+
+services:
+  # ==============================================
+  # PlantUML Editor - 本番環境
+  # ==============================================
+  plantuml-editor:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+      target: production  # 本番最適化
+    image: plantuml-editor:${VERSION:-latest}
+    
+    restart: always
+    
+    ports:
+      - "3000"  # 内部ポートのみ（Nginxからアクセス）
+    
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - KROKI_URL=${KROKI_URL:-https://kroki.io/plantuml/svg}
+      - LOG_LEVEL=info
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_WINDOW=900000  # 15分
+    
+    # セキュリティ設定
+    security_opt:
+      - no-new-privileges:true
+    
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    read_only: true
+    
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /var/run:noexec,nosuid,size=100m
+    
+    # リソース制限
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.3'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    
+    # ヘルスチェック
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==============================================
+  # Nginx（リバースプロキシ・SSL終端・セキュリティ）
+  # ==============================================
+  nginx:
+    image: nginx:alpine
+    restart: always
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./config/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./config/ssl:/etc/nginx/ssl:ro
+      - ./public:/usr/share/nginx/html/static:ro
+      - nginx-logs:/var/log/nginx
+    
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
+    
+    depends_on:
+      - plantuml-editor
+    
+    # セキュリティ設定
+    security_opt:
+      - no-new-privileges:true
+    
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.2'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ==============================================
+  # Redis（キャッシュ・レート制限）
+  # ==============================================
+  redis:
+    image: redis:7-alpine
+    restart: always
+    
+    volumes:
+      - redis-data:/data
+      - ./config/redis.prod.conf:/usr/local/etc/redis/redis.conf:ro
+    
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD}
+    
+    # セキュリティ設定
+    security_opt:
+      - no-new-privileges:true
+    
+    cap_drop:
+      - ALL
+    
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ==============================================
+  # ログ監視・メトリクス収集
+  # ==============================================
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    restart: always
+    
+    volumes:
+      - ./config/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - nginx-logs:/var/log/nginx:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    
+    ports:
+      - "24224:24224"
+    
+    depends_on:
+      - plantuml-editor
+      - nginx
+
+volumes:
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/plantuml/redis-data
+  
+  nginx-logs:
+    driver: local
+
+# セキュアネットワーク設定
+networks:
+  default:
+    name: plantuml-prod-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: plantuml0

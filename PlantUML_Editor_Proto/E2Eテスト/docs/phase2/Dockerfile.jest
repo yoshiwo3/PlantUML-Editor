@@ -1,0 +1,21 @@
+# Jest Testing Environment
+FROM node:20.18.0-bookworm
+
+WORKDIR /app
+
+# Copy configuration files
+COPY package*.json ./
+COPY jest.config.js ./
+COPY jest.setup.js ./
+COPY .babelrc ./
+
+# Install dependencies
+RUN npm install --save-dev jest @babel/preset-env babel-jest jsdom @testing-library/jest-dom
+
+# Copy test files
+COPY __tests__ ./__tests__
+
+# Set environment
+ENV NODE_ENV=test
+
+CMD ["npm", "run", "test:unit"]

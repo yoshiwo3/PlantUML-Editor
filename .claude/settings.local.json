@@ -87,7 +87,12 @@
       "mcp__playwright__browser_resize",
       "Bash(cmd /c:*)",
       "Bash(copy app.js \"app.js.backup.20250814_1256\")",
-      "Bash(copy app.js app.js.backup.20250814_1245)"
+      "Bash(copy app.js app.js.backup.20250814_1245)",
+      "Bash(git worktree:*)",
+      "Bash(npm:*)",
+      "Bash(cat:*)",
+      "mcp__github__search_repositories",
+      "mcp__fetch__fetch_url"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

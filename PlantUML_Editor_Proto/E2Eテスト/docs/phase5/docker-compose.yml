@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+      - BASE_URL=http://host.docker.internal:8087
+      - COVERAGE_DIR=/app/coverage
+      - TEST_RESULTS_DIR=/app/test-results
+    networks:
+      - test-network
+    command: npm run test:all
+    stdin_open: true
+    tty: true
+    depends_on:
+      - app-server
+
+  # テスト対象のアプリケーションサーバー（オプション）
+  app-server:
+    image: nginx:alpine
+    ports:
+      - "8088:80"
+    volumes:
+      - ../../../:/usr/share/nginx/html:ro
+    networks:
+      - test-network
+    command: ["sh", "-c", "echo 'Static server for testing' && nginx -g 'daemon off;'"]
+
+  # テスト結果収集用サービス
+  test-reporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./reports:/app/reports
+    environment:
+      - NODE_ENV=test
+    networks:
+      - test-network
+    command: ["node", "generate-reports.cjs"]
+    depends_on:
+      - playwright
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  node_modules:
+  test-results:
+  coverage:
+  reports:

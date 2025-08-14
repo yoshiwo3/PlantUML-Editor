@@ -1,0 +1,53 @@
+{
+  "name": "plantuml-editor-e2e-tests-phase5",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "description": "Phase 5 E2E tests for PlantUML Editor - Comprehensive Modal System Testing",
+  "scripts": {
+    "test:unit": "node test-unit.cjs",
+    "test:integration": "node test-integration.cjs",
+    "test:e2e": "node test-e2e.cjs",
+    "test:modal-edit": "node test-modal-edit.cjs",
+    "test:transaction": "node test-transaction.cjs",
+    "test:error-handling": "node test-error-handling.cjs",
+    "test:all": "node test-runner-phase5.cjs",
+    "test:chromium": "BROWSER=chromium node test-e2e.cjs",
+    "test:firefox": "BROWSER=firefox node test-e2e.cjs",
+    "test:msedge": "BROWSER=msedge node test-e2e.cjs",
+    "test:webkit": "BROWSER=webkit node test-e2e.cjs",
+    "test:cross-browser": "npm run test:chromium && npm run test:firefox && npm run test:msedge && npm run test:webkit",
+    "test:coverage": "node test-coverage.cjs",
+    "test:performance": "node test-performance.cjs",
+    "docker:build": "docker-compose build",
+    "docker:test": "docker-compose run --rm playwright npm run test:all",
+    "docker:test:unit": "docker-compose run --rm playwright npm run test:unit",
+    "docker:test:integration": "docker-compose run --rm playwright npm run test:integration",
+    "docker:test:e2e": "docker-compose run --rm playwright npm run test:e2e",
+    "docker:test:coverage": "docker-compose run --rm playwright npm run test:coverage",
+    "docker:shell": "docker-compose run --rm playwright bash",
+    "clean": "rm -rf test-results/ coverage/ logs/",
+    "setup": "npm install && npx playwright install --with-deps"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "jest": "^29.7.0",
+    "c8": "^8.0.1",
+    "jsdom": "^24.0.0",
+    "jsdom-global": "^3.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "collectCoverage": true,
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "html", "json"],
+    "testMatch": ["**/test-unit.cjs", "**/test-integration.cjs"],
+    "setupFilesAfterEnv": ["./jest.setup.js"]
+  }
+}

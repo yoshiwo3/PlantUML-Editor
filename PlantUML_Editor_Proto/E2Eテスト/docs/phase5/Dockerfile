@@ -1,7 +1,7 @@
-# Node.js v20 with Playwright
+# Node.js v20 with Playwright - Phase 5 Testing Environment
 FROM node:20.18.0-bookworm
 
-# Install dependencies for Playwright
+# Install system dependencies for Playwright and testing tools
 RUN apt-get update && apt-get install -y \
     libnss3 \
     libnspr4 \
@@ -25,6 +25,9 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     fonts-liberation \
     libgtk-3-0 \
+    xvfb \
+    curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -39,11 +42,23 @@ RUN npm install
 # Install Playwright with all browsers and dependencies
 RUN npx playwright install --with-deps chromium firefox webkit msedge
 
-# Copy all files
+# Create necessary directories
+RUN mkdir -p /app/test-results /app/coverage /app/logs /app/reports
+
+# Copy test files and configurations
 COPY . .
 
-# Set Playwright to skip browser download (already installed)
+# Set environment variables
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV NODE_ENV=test
+ENV COVERAGE_DIR=/app/coverage
+ENV TEST_RESULTS_DIR=/app/test-results
+
+# Set up Jest environment for unit/integration tests
+RUN npm install --save-dev jest-environment-jsdom
+
+# Create Jest setup file
+RUN echo 'global.document = require("jsdom").jsdom();\nglobal.window = document.defaultView;\nglobal.navigator = window.navigator;' > jest.setup.js
 
 # Default command
 CMD ["npm", "run", "test:all"]

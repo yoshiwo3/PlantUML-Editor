@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Playwright with all browsers permanently installed
+  playwright-permanent:
+    image: plantuml-e2e-permanent:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.permanent
+    container_name: playwright-permanent
+    environment:
+      - DOCKER_ENV=true
+      - NODE_ENV=test
+      - PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+    volumes:
+      # Test scripts only (browsers are in image)
+      - ./test-webkit.cjs:/app/test-webkit.cjs:ro
+      - ./test-cross-browser.cjs:/app/test-cross-browser.cjs:ro
+      - ./test-plantuml-editor.cjs:/app/test-plantuml-editor.cjs:ro
+      - ./test-docker-validation.cjs:/app/test-docker-validation.cjs:ro
+      # Output directories
+      - ./screenshots:/app/screenshots
+      - ./test-results:/app/test-results
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      bash -c "
+        echo '===================================' &&
+        echo 'Permanent Browser Installation Check' &&
+        echo '===================================' &&
+        /check-browsers.sh &&
+        echo '' &&
+        echo 'Running WebKit test...' &&
+        node test-webkit.cjs &&
+        echo '' &&
+        echo 'Running cross-browser tests...' &&
+        node test-cross-browser.cjs
+      "
+
+  # PlantUML test server
+  plantuml-server:
+    image: node:20.18.0-alpine
+    container_name: plantuml-server-permanent
+    working_dir: /app
+    volumes:
+      - ../../../:/app:ro
+    ports:
+      - "8087:8087"
+    environment:
+      - NODE_ENV=test
+      - PORT=8087
+    command: >
+      sh -c "
+        cd PlantUML_Editor_Proto &&
+        npx http-server -p 8087 -c-1 --cors
+      "
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8087"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  default:
+    name: plantuml-permanent-network

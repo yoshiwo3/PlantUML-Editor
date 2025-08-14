@@ -19,7 +19,9 @@ function parseSemi(lines) {
       }
     } else if (line.startsWith('関連:')) {
       const body = line.substring('関連:'.length).trim();
-      const m = body.match(/([^\-]+)(--\||--|<-\||<--|->|-->)([^:]+):?\s*(.*)/);
+      // 矢印パターンを正確に解析
+      const arrowPattern = /(.*?)\s+(--|>|--\|>|-->|->|<--|<-|--\|)\s+(.*?)(?:\s*:\s*(.*))?$/;
+      const m = body.match(arrowPattern);
       if (m) {
         relations.push({ from: m[1].trim(), arrow: m[2], to: m[3].trim(), label: m[4] || '' });
       }
@@ -31,7 +33,13 @@ function parseSemi(lines) {
     c.props.forEach(p => out.push(`  ${p}`));
     out.push('}');
   });
-  relations.forEach(r => out.push(`${r.from} ${r.arrow} ${r.to} : ${r.label}`));
+  relations.forEach(r => {
+    if (r.label) {
+      out.push(`${r.from} ${r.arrow} ${r.to} :  ${r.label}`);
+    } else {
+      out.push(`${r.from} ${r.arrow} ${r.to}`);
+    }
+  });
   out.push('@enduml');
   return out.join('\n');
 }
