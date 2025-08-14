@@ -16,19 +16,19 @@ const RESULTS_DIR = path.join(__dirname, '../../test-results');
 const PHASE2_TESTS = {
     'sync-functionality': {
         name: 'Phase2-A: 同期機能テスト',
-        file: path.join(__dirname, 'test-sync-functionality.js'),
+        file: path.join(__dirname, 'test-sync-functionality.cjs'),
         timeout: 120000,
         category: 'sync'
     },
     'complex-flows': {
         name: 'Phase2-A: 複雑フローテスト',
-        file: path.join(__dirname, 'test-complex-flows.js'),
+        file: path.join(__dirname, 'test-complex-flows.cjs'),
         timeout: 180000,
         category: 'flows'
     },
     'performance-metrics': {
         name: 'Phase2-B: パフォーマンステスト',
-        file: path.join(__dirname, 'test-performance-metrics.js'),
+        file: path.join(__dirname, 'test-performance-metrics.cjs'),
         timeout: 300000,
         category: 'performance'
     }

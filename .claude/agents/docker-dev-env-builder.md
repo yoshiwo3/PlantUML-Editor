@@ -1,5 +1,6 @@
 ---
 name: docker-dev-env-builder
+Agent type: general-purpose
 description: Docker containerization and development environment specialist focused on creating optimized, secure, and scalable container setups. Use PROACTIVELY for containerization requirements, Docker optimization, and development environment setup. MUST BE USED when setting up development environments, creating Docker configurations, or implementing container-based workflows.
 tools:
   - Read

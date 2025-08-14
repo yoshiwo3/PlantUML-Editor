@@ -1,0 +1,180 @@
+name: ❓ 質問・サポート / Question & Support
+description: 使い方の質問やサポートが必要な場合
+title: "[Question] "
+labels: ["question", "support", "needs-response"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ❓ 質問・サポート
+
+        ご質問いただき、ありがとうございます！できる限りサポートさせていただきます。
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: 📝 質問の種類
+      description: どのような種類の質問ですか？
+      options:
+        - 使い方・操作方法
+        - インストール・セットアップ
+        - トラブルシューティング
+        - 設定・カスタマイズ
+        - API・開発関連
+        - パフォーマンス・最適化
+        - セキュリティ
+        - その他
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: ❓ 質問内容
+      description: 具体的な質問内容を記載してください
+      placeholder: |
+        何についてお困りですか？
+        できるだけ具体的に教えてください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 🔍 状況・背景
+      description: 質問の背景や現在の状況を説明してください
+      placeholder: |
+        - 何をしようとしていますか？
+        - どの段階で困っていますか？
+        - どのような結果を期待していますか？
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-tried
+    attributes:
+      label: 🔧 試したこと
+      description: 既に試した方法や調べた内容があれば記載してください
+      placeholder: |
+        - ドキュメントの○○を確認しました
+        - ○○を試しましたが、うまくいきませんでした
+        - ○○のエラーが発生しました
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 🖥️ 環境情報
+      description: 使用している環境の情報を記載してください
+      placeholder: |
+        - OS: [e.g. Windows 11, macOS 13.0, Ubuntu 20.04]
+        - ブラウザ: [e.g. Chrome 118, Firefox 119, Safari 16.1]
+        - Node.js バージョン: [e.g. 18.17.0]
+        - アプリケーションバージョン: [e.g. v1.0.0]
+        - その他関連ツール:
+    validations:
+      required: false
+
+  - type: textarea
+    id: code-config
+    attributes:
+      label: 💻 関連コード・設定
+      description: 関連するコードや設定ファイルがあれば記載してください
+      placeholder: |
+        ```javascript
+        // 関連するコードをここに貼り付け
+        ```
+
+        または
+
+        ```json
+        // 設定ファイルの内容
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: error-messages
+    attributes:
+      label: ⚠️ エラーメッセージ・ログ
+      description: エラーメッセージやログがあれば貼り付けてください
+      placeholder: |
+        ```
+        [エラーメッセージやログをここに貼り付け]
+        ```
+    validations:
+      required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: ⏰ 緊急度
+      description: どの程度急いで解決したいですか？
+      options:
+        - 低 (Low) - 時間があるときで大丈夫
+        - 中 (Medium) - 近日中に解決したい
+        - 高 (High) - できるだけ早く解決したい
+        - 緊急 (Urgent) - 今すぐ解決が必要
+      default: 1
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: documentation-check
+    attributes:
+      label: 📚 事前確認
+      description: 以下の情報源を確認しましたか？
+      options:
+        - label: README.mdを確認しました
+        - label: プロジェクトのWikiやドキュメントを確認しました
+        - label: 既存のIssuesやDiscussionsを検索しました
+        - label: 公式ドキュメントやFAQを確認しました
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: 📎 追加情報
+      description: その他、回答に役立つ情報があれば記載してください
+      placeholder: |
+        - スクリーンショット
+        - 動画・GIF
+        - 関連リンク
+        - その他の参考情報
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: follow-up
+    attributes:
+      label: 🔄 フォローアップ
+      description: 解決後のご協力について
+      options:
+        - label: 解決方法が見つかったらドキュメント改善に協力できます
+        - label: 同じような質問をする他の人のために、Q&Aに追加することに同意します
+        - label: 解決後にフィードバックを提供できます
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        ### 💬 サポートリソース
+        
+        **迅速なサポートのために、以下もご活用ください：**
+        
+        - 🔗 **[プロジェクトWiki](https://github.com/your-org/plantuml-jp2en/wiki)**: よくある質問と解決方法
+        - 💭 **[Discussions](https://github.com/your-org/plantuml-jp2en/discussions)**: コミュニティとの意見交換
+        - 📧 **[コミュニティチャット](mailto:community@yourproject.com)**: リアルタイムでの質問
+        - 📖 **[公式ドキュメント](https://docs.yourproject.com)**: 詳細な使用方法
+        
+        ### 🚀 回答までの流れ
+        
+        1. **📋 分類**: 質問の種類に応じて適切な担当者にアサインします
+        2. **🔍 調査**: 問題を再現・調査します  
+        3. **💡 回答**: 解決方法をご提案します
+        4. **✅ 確認**: 解決できたかフォローアップします
+        
+        **お困りごとが解決するよう、全力でサポートします！**

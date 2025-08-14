@@ -1,0 +1,22 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 💬 ディスカッション / Discussions
+    url: https://github.com/your-org/plantuml-jp2en/discussions
+    about: 一般的な質問、アイデアの共有、コミュニティとの議論はこちら
+
+  - name: 📚 プロジェクトWiki
+    url: https://github.com/your-org/plantuml-jp2en/wiki
+    about: よくある質問、使用方法、トラブルシューティング情報
+
+  - name: 🌐 公式ドキュメント
+    url: https://docs.yourproject.com
+    about: 詳細な使用方法とAPI仕様
+
+  - name: 📧 コミュニティサポート
+    url: mailto:support@yourproject.com
+    about: 緊急のサポートが必要な場合はこちら
+
+  - name: 🐛 セキュリティ脆弱性の報告
+    url: mailto:security@yourproject.com
+    about: セキュリティに関する問題は非公開でご連絡ください

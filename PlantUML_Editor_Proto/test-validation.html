@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantUML エディター 動作検証</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-section h2 {
+            color: #007acc;
+            margin-top: 0;
+        }
+        .test-controls {
+            margin: 15px 0;
+        }
+        .btn {
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background-color: #005f99;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .actor-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .actor-chip {
+            background-color: #e9ecef;
+            padding: 5px 12px;
+            border-radius: 15px;
+            border: 1px solid #ced4da;
+            font-size: 12px;
+        }
+        .iframe-container {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 PlantUML エディター 動作検証テスト</h1>
+        <p><strong>作成日時:</strong> 2025-08-14 05:06:00</p>
+        <p><strong>目的:</strong> 修正されたapp.jsのgetCurrentActorsメソッドとその他の機能の動作を検証する</p>
+
+        <!-- メインアプリケーション読み込み -->
+        <div class="test-section">
+            <h2>📱 メインアプリケーション</h2>
+            <p>修正されたapp.jsを含むメインアプリケーションをiframe内で読み込みます。</p>
+            <div class="iframe-container">
+                <iframe id="main-app" src="./index.html" title="PlantUML Editor"></iframe>
+            </div>
+            <div class="test-controls">
+                <button class="btn" onclick="reloadMainApp()">🔄 アプリケーション再読み込み</button>
+                <button class="btn btn-secondary" onclick="clearCache()">🗑️ キャッシュクリア</button>
+            </div>
+        </div>
+
+        <!-- getCurrentActors メソッドテスト -->
+        <div class="test-section">
+            <h2>🎭 getCurrentActors メソッド テスト</h2>
+            <p>app.jsのgetCurrentActorsメソッドが正しく動作するかテストします。</p>
+            <div class="test-controls">
+                <button class="btn" onclick="testGetCurrentActors()">🧪 getCurrentActors メソッド実行</button>
+                <button class="btn btn-secondary" onclick="testActorSelection()">👤 アクター選択テスト</button>
+                <button class="btn btn-secondary" onclick="testActorManipulation()">⚙️ アクター操作テスト</button>
+            </div>
+            <div id="getCurrentActorsOutput" class="output">テスト実行待機中...</div>
+            <div id="getCurrentActorsStatus" class="status info">準備完了</div>
+        </div>
+
+        <!-- ループダイアログ テスト -->
+        <div class="test-section">
+            <h2>🔁 ループダイアログ テスト</h2>
+            <p>ループ処理の作成と表示機能をテストします。</p>
+            <div class="test-controls">
+                <button class="btn" onclick="testLoopDialog()">🔁 ループ作成テスト</button>
+                <button class="btn btn-secondary" onclick="testLoopGeneration()">📝 ループコード生成テスト</button>
+            </div>
+            <div id="loopTestOutput" class="output">テスト実行待機中...</div>
+            <div id="loopTestStatus" class="status info">準備完了</div>
+        </div>
+
+        <!-- 並列処理ダイアログ テスト -->
+        <div class="test-section">
+            <h2>⚡ 並列処理ダイアログ テスト</h2>
+            <p>並列処理の作成と表示機能をテストします。</p>
+            <div class="test-controls">
+                <button class="btn" onclick="testParallelDialog()">⚡ 並列処理作成テスト</button>
+                <button class="btn btn-secondary" onclick="testParallelGeneration()">📝 並列コード生成テスト</button>
+            </div>
+            <div id="parallelTestOutput" class="output">テスト実行待機中...</div>
+            <div id="parallelTestStatus" class="status info">準備完了</div>
+        </div>
+
+        <!-- コンソールエラー監視 -->
+        <div class="test-section">
+            <h2>🚨 コンソールエラー監視</h2>
+            <p>JavaScriptエラーを監視し、問題を検出します。</p>
+            <div class="test-controls">
+                <button class="btn" onclick="startErrorMonitoring()">🚨 エラー監視開始</button>
+                <button class="btn btn-danger" onclick="stopErrorMonitoring()">⏹️ 監視停止</button>
+                <button class="btn btn-secondary" onclick="clearErrorLog()">🗑️ ログクリア</button>
+            </div>
+            <div id="errorMonitoringOutput" class="output">エラー監視が無効です</div>
+            <div id="errorMonitoringStatus" class="status info">準備完了</div>
+        </div>
+
+        <!-- 総合テスト結果 -->
+        <div class="test-section">
+            <h2>📊 総合テスト結果</h2>
+            <p>すべてのテストの結果を表示します。</p>
+            <div class="test-controls">
+                <button class="btn" onclick="runAllTests()">🚀 全テスト実行</button>
+                <button class="btn btn-secondary" onclick="generateReport()">📋 レポート生成</button>
+            </div>
+            <div id="overallTestOutput" class="output">テスト未実行</div>
+            <div id="overallTestStatus" class="status info">準備完了</div>
+        </div>
+    </div>
+
+    <script>
+        // エラー監視用
+        let errorMonitoringActive = false;
+        let errorLog = [];
+        let originalConsoleError = console.error;
+        let originalConsoleWarn = console.warn;
+
+        // テスト結果を格納
+        let testResults = {
+            getCurrentActors: null,
+            loopDialog: null,
+            parallelDialog: null,
+            errorMonitoring: null
+        };
+
+        // アプリケーション再読み込み
+        function reloadMainApp() {
+            const iframe = document.getElementById('main-app');
+            const currentSrc = iframe.src;
+            iframe.src = '';
+            setTimeout(() => {
+                iframe.src = currentSrc + '?nocache=' + Date.now();
+            }, 100);
+            updateStatus('メインアプリケーションを再読み込みしました', 'info', 'getCurrentActorsStatus');
+        }
+
+        // キャッシュクリア
+        function clearCache() {
+            const iframe = document.getElementById('main-app');
+            iframe.src = iframe.src.split('?')[0] + '?v=' + Date.now();
+            updateStatus('キャッシュをクリアしてアプリケーションを再読み込みしました', 'success', 'getCurrentActorsStatus');
+        }
+
+        // getCurrentActorsメソッドテスト
+        function testGetCurrentActors() {
+            updateStatus('getCurrentActorsメソッドをテスト中...', 'info', 'getCurrentActorsStatus');
+            
+            try {
+                const iframe = document.getElementById('main-app');
+                const iframeWindow = iframe.contentWindow;
+                
+                // iframeのコンテンツが読み込まれているかチェック
+                if (!iframeWindow || !iframeWindow.document) {
+                    throw new Error('iframeのコンテンツにアクセスできません');
+                }
+
+                // app.jsが読み込まれているかチェック
+                const appScript = iframeWindow.document.querySelector('script[src*="app.js"]');
+                if (!appScript) {
+                    throw new Error('app.jsが見つかりません');
+                }
+
+                // PlantUMLEditorインスタンスを探す
+                let editorInstance = null;
+                if (iframeWindow.plantUMLEditor) {
+                    editorInstance = iframeWindow.plantUMLEditor;
+                } else if (iframeWindow.app) {
+                    editorInstance = iframeWindow.app;
+                } else {
+                    // グローバルスコープから探す
+                    for (let prop in iframeWindow) {
+                        if (iframeWindow[prop] && typeof iframeWindow[prop] === 'object' && 
+                            typeof iframeWindow[prop].getCurrentActors === 'function') {
+                            editorInstance = iframeWindow[prop];
+                            break;
+                        }
+                    }
+                }
+
+                if (!editorInstance) {
+                    throw new Error('PlantUMLEditorインスタンスが見つかりません');
+                }
+
+                if (typeof editorInstance.getCurrentActors !== 'function') {
+                    throw new Error('getCurrentActorsメソッドが存在しません');
+                }
+
+                // メソッドを実行
+                const actors = editorInstance.getCurrentActors();
+                
+                let output = `getCurrentActors実行結果:\n`;
+                output += `戻り値の型: ${typeof actors}\n`;
+                output += `戻り値: ${JSON.stringify(actors, null, 2)}\n`;
+                
+                if (Array.isArray(actors)) {
+                    output += `配列の長さ: ${actors.length}\n`;
+                    output += `要素: [${actors.join(', ')}]\n`;
+                } else if (actors && actors.size !== undefined) {
+                    output += `Setのサイズ: ${actors.size}\n`;
+                    output += `要素: [${Array.from(actors).join(', ')}]\n`;
+                }
+
+                document.getElementById('getCurrentActorsOutput').textContent = output;
+                updateStatus('getCurrentActorsメソッドのテストが成功しました', 'success', 'getCurrentActorsStatus');
+                testResults.getCurrentActors = 'success';
+
+            } catch (error) {
+                const output = `エラーが発生しました:\n${error.message}\n\nスタックトレース:\n${error.stack}`;
+                document.getElementById('getCurrentActorsOutput').textContent = output;
+                updateStatus(`getCurrentActorsテスト失敗: ${error.message}`, 'error', 'getCurrentActorsStatus');
+                testResults.getCurrentActors = 'error';
+            }
+        }
+
+        // アクター選択テスト
+        function testActorSelection() {
+            updateStatus('アクター選択機能をテスト中...', 'info', 'getCurrentActorsStatus');
+            
+            try {
+                const iframe = document.getElementById('main-app');
+                const iframeWindow = iframe.contentWindow;
+                const iframeDocument = iframeWindow.document;
+                
+                // アクターボタンを探す
+                const actorButtons = iframeDocument.querySelectorAll('.actor-btn[data-actor]');
+                if (actorButtons.length === 0) {
+                    throw new Error('アクターボタンが見つかりません');
+                }
+
+                let output = `アクター選択テスト:\n`;
+                output += `見つかったアクターボタン数: ${actorButtons.length}\n`;
+                
+                // 最初の2つのアクターボタンをクリック
+                const testActors = Array.from(actorButtons).slice(0, 2);
+                testActors.forEach((button, index) => {
+                    const actorName = button.getAttribute('data-actor');
+                    output += `${index + 1}. アクター "${actorName}" をクリック\n`;
+                    button.click();
+                });
+
+                // 少し待ってからgetCurrentActorsを実行
+                setTimeout(() => {
+                    testGetCurrentActors();
+                }, 500);
+
+                output += `\nアクター選択操作完了。getCurrentActorsメソッドを実行中...`;
+                document.getElementById('getCurrentActorsOutput').textContent = output;
+                updateStatus('アクター選択テストを実行中...', 'info', 'getCurrentActorsStatus');
+
+            } catch (error) {
+                const output = `アクター選択テスト エラー:\n${error.message}`;
+                document.getElementById('getCurrentActorsOutput').textContent = output;
+                updateStatus(`アクター選択テスト失敗: ${error.message}`, 'error', 'getCurrentActorsStatus');
+            }
+        }
+
+        // アクター操作テスト
+        function testActorManipulation() {
+            updateStatus('アクター操作機能をテスト中...', 'info', 'getCurrentActorsStatus');
+            
+            try {
+                const iframe = document.getElementById('main-app');
+                const iframeWindow = iframe.contentWindow;
+                const iframeDocument = iframeWindow.document;
+                
+                let output = `アクター操作テスト:\n`;
+                
+                // アクターチップを探す
+                const actorChips = iframeDocument.querySelectorAll('.actor-chips .actor-chip');
+                output += `現在のアクターチップ数: ${actorChips.length}\n`;
+                
+                actorChips.forEach((chip, index) => {
+                    const actorName = chip.textContent.replace('×', '').trim();
+                    output += `${index + 1}. アクター: "${actorName}"\n`;
+                });
+
+                // 選択されたアクター表示を確認
+                const selectedActorsDiv = iframeDocument.querySelector('.selected-actors');
+                if (selectedActorsDiv) {
+                    output += `\n選択されたアクター表示が見つかりました\n`;
+                } else {
+                    output += `\n⚠️ 選択されたアクター表示が見つかりません\n`;
+                }
+
+                document.getElementById('getCurrentActorsOutput').textContent = output;
+                updateStatus('アクター操作テスト完了', 'success', 'getCurrentActorsStatus');
+
+            } catch (error) {
+                const output = `アクター操作テスト エラー:\n${error.message}`;
+                document.getElementById('getCurrentActorsOutput').textContent = output;
+                updateStatus(`アクター操作テスト失敗: ${error.message}`, 'error', 'getCurrentActorsStatus');
+            }
+        }
+
+        // ループダイアログテスト
+        function testLoopDialog() {
+            updateStatus('ループダイアログをテスト中...', 'info', 'loopTestStatus');
+            
+            try {
+                const iframe = document.getElementById('main-app');
+                const iframeWindow = iframe.contentWindow;
+                const iframeDocument = iframeWindow.document;
+                
+                let output = `ループダイアログテスト:\n`;
+                
+                // ループタブをクリック
+                const loopTab = iframeDocument.querySelector('[data-type="loop"]');
+                if (loopTab) {
+                    output += `1. ループタブをクリック\n`;
+                    loopTab.click();
+                } else {
+                    throw new Error('ループタブが見つかりません');
+                }
+
+                // ループビルダーが表示されているかチェック
+                setTimeout(() => {
+                    const loopBuilder = iframeDocument.getElementById('loop-builder');
+                    if (loopBuilder && !loopBuilder.classList.contains('hidden')) {
+                        output += `2. ループビルダーが表示されました\n`;
+                        
+                        // ループ条件を入力
+                        const loopCondition = iframeDocument.getElementById('loop-condition');
+                        if (loopCondition) {
+                            loopCondition.value = '全データを処理するまで';
+                            output += `3. ループ条件を入力: "${loopCondition.value}"\n`;
+                        }
+
+                        document.getElementById('loopTestOutput').textContent = output + '\nループダイアログテスト完了';
+                        updateStatus('ループダイアログテスト成功', 'success', 'loopTestStatus');
+                        testResults.loopDialog = 'success';
+                    } else {
+                        throw new Error('ループビルダーが表示されません');
+                    }
+                }, 200);
+
+            } catch (error) {
+                const output = `ループダイアログテスト エラー:\n${error.message}`;
+                document.getElementById('loopTestOutput').textContent = output;
+                updateStatus(`ループダイアログテスト失敗: ${error.message}`, 'error', 'loopTestStatus');
+                testResults.loopDialog = 'error';
+            }
+        }
+
+        // ループコード生成テスト
+        function testLoopGeneration() {
+            // ループダイアログテストを実行してからコード生成をテスト
+            testLoopDialog();
+            
+            setTimeout(() => {
+                try {
+                    const iframe = document.getElementById('main-app');
+                    const iframeWindow = iframe.contentWindow;
+                    const iframeDocument = iframeWindow.document;
+                    
+                    // ループ追加ボタンをクリック
+                    const addLoopBtn = iframeDocument.querySelector('.btn-add-loop');
+                    if (addLoopBtn) {
+                        addLoopBtn.click();
+                        
+                        setTimeout(() => {
+                            // PlantUMLコードを確認
+                            const codeEditor = iframeDocument.getElementById('plantuml-code');
+                            if (codeEditor) {
+                                const code = codeEditor.value;
+                                let output = `ループコード生成テスト:\n`;
+                                output += `生成されたコード:\n${code}\n`;
+                                
+                                if (code.includes('loop')) {
+                                    output += `✅ ループコードが正しく生成されました`;
+                                    updateStatus('ループコード生成テスト成功', 'success', 'loopTestStatus');
+                                } else {
+                                    output += `❌ ループコードが生成されていません`;
+                                    updateStatus('ループコード生成テスト失敗', 'error', 'loopTestStatus');
+                                }
+                                
+                                document.getElementById('loopTestOutput').textContent = output;
+                            }
+                        }, 300);
+                    }
+                } catch (error) {
+                    updateStatus(`ループコード生成テスト失敗: ${error.message}`, 'error', 'loopTestStatus');
+                }
+            }, 500);
+        }
+
+        // 並列処理ダイアログテスト
+        function testParallelDialog() {
+            updateStatus('並列処理ダイアログをテスト中...', 'info', 'parallelTestStatus');
+            
+            try {
+                const iframe = document.getElementById('main-app');
+                const iframeWindow = iframe.contentWindow;
+                const iframeDocument = iframeWindow.document;
+                
+                let output = `並列処理ダイアログテスト:\n`;
+                
+                // 並列処理タブをクリック
+                const parallelTab = iframeDocument.querySelector('[data-type="parallel"]');
+                if (parallelTab) {
+                    output += `1. 並列処理タブをクリック\n`;
+                    parallelTab.click();
+                } else {
+                    throw new Error('並列処理タブが見つかりません');
+                }
+
+                // 並列処理ビルダーが表示されているかチェック
+                setTimeout(() => {
+                    const parallelBuilder = iframeDocument.getElementById('parallel-builder');
+                    if (parallelBuilder && !parallelBuilder.classList.contains('hidden')) {
+                        output += `2. 並列処理ビルダーが表示されました\n`;
+                        
+                        // 並列処理ブランチをチェック
+                        const parallelBranches = iframeDocument.querySelectorAll('.parallel-branch');
+                        output += `3. 並列処理ブランチ数: ${parallelBranches.length}\n`;
+
+                        document.getElementById('parallelTestOutput').textContent = output + '\n並列処理ダイアログテスト完了';
+                        updateStatus('並列処理ダイアログテスト成功', 'success', 'parallelTestStatus');
+                        testResults.parallelDialog = 'success';
+                    } else {
+                        throw new Error('並列処理ビルダーが表示されません');
+                    }
+                }, 200);
+
+            } catch (error) {
+                const output = `並列処理ダイアログテスト エラー:\n${error.message}`;
+                document.getElementById('parallelTestOutput').textContent = output;
+                updateStatus(`並列処理ダイアログテスト失敗: ${error.message}`, 'error', 'parallelTestStatus');
+                testResults.parallelDialog = 'error';
+            }
+        }
+
+        // 並列処理コード生成テスト
+        function testParallelGeneration() {
+            // 並列処理ダイアログテストを実行してからコード生成をテスト
+            testParallelDialog();
+            
+            setTimeout(() => {
+                try {
+                    const iframe = document.getElementById('main-app');
+                    const iframeWindow = iframe.contentWindow;
+                    const iframeDocument = iframeWindow.document;
+                    
+                    // 並列処理追加ボタンをクリック
+                    const addParallelBtn = iframeDocument.querySelector('.btn-add-parallel');
+                    if (addParallelBtn) {
+                        addParallelBtn.click();
+                        
+                        setTimeout(() => {
+                            // PlantUMLコードを確認
+                            const codeEditor = iframeDocument.getElementById('plantuml-code');
+                            if (codeEditor) {
+                                const code = codeEditor.value;
+                                let output = `並列処理コード生成テスト:\n`;
+                                output += `生成されたコード:\n${code}\n`;
+                                
+                                if (code.includes('par') && code.includes('else')) {
+                                    output += `✅ 並列処理コードが正しく生成されました`;
+                                    updateStatus('並列処理コード生成テスト成功', 'success', 'parallelTestStatus');
+                                } else {
+                                    output += `❌ 並列処理コードが生成されていません`;
+                                    updateStatus('並列処理コード生成テスト失敗', 'error', 'parallelTestStatus');
+                                }
+                                
+                                document.getElementById('parallelTestOutput').textContent = output;
+                            }
+                        }, 300);
+                    }
+                } catch (error) {
+                    updateStatus(`並列処理コード生成テスト失敗: ${error.message}`, 'error', 'parallelTestStatus');
+                }
+            }, 500);
+        }
+
+        // エラー監視開始
+        function startErrorMonitoring() {
+            if (errorMonitoringActive) {
+                updateStatus('エラー監視は既に開始されています', 'info', 'errorMonitoringStatus');
+                return;
+            }
+
+            errorMonitoringActive = true;
+            errorLog = [];
+            
+            // コンソールエラーをキャプチャ
+            console.error = function(...args) {
+                errorLog.push({
+                    type: 'error',
+                    message: args.join(' '),
+                    timestamp: new Date().toISOString()
+                });
+                updateErrorDisplay();
+                originalConsoleError.apply(console, args);
+            };
+
+            console.warn = function(...args) {
+                errorLog.push({
+                    type: 'warning',
+                    message: args.join(' '),
+                    timestamp: new Date().toISOString()
+                });
+                updateErrorDisplay();
+                originalConsoleWarn.apply(console, args);
+            };
+
+            // iframeのエラーも監視
+            const iframe = document.getElementById('main-app');
+            iframe.addEventListener('load', () => {
+                try {
+                    const iframeWindow = iframe.contentWindow;
+                    iframeWindow.addEventListener('error', (event) => {
+                        errorLog.push({
+                            type: 'iframe-error',
+                            message: event.error ? event.error.message : event.message,
+                            timestamp: new Date().toISOString()
+                        });
+                        updateErrorDisplay();
+                    });
+                } catch (e) {
+                    // Cross-origin issues might prevent this
+                }
+            });
+
+            updateStatus('エラー監視を開始しました', 'success', 'errorMonitoringStatus');
+            updateErrorDisplay();
+        }
+
+        // エラー監視停止
+        function stopErrorMonitoring() {
+            if (!errorMonitoringActive) {
+                updateStatus('エラー監視は停止しています', 'info', 'errorMonitoringStatus');
+                return;
+            }
+
+            errorMonitoringActive = false;
+            console.error = originalConsoleError;
+            console.warn = originalConsoleWarn;
+            
+            updateStatus('エラー監視を停止しました', 'success', 'errorMonitoringStatus');
+            testResults.errorMonitoring = errorLog.length === 0 ? 'success' : 'warning';
+        }
+
+        // エラーログクリア
+        function clearErrorLog() {
+            errorLog = [];
+            updateErrorDisplay();
+            updateStatus('エラーログをクリアしました', 'success', 'errorMonitoringStatus');
+        }
+
+        // エラー表示更新
+        function updateErrorDisplay() {
+            const output = errorMonitoringActive ? 
+                `エラー監視中... (検出されたエラー: ${errorLog.length}件)\n\n` + 
+                errorLog.map(log => `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}`).join('\n') :
+                'エラー監視が無効です';
+            
+            document.getElementById('errorMonitoringOutput').textContent = output;
+        }
+
+        // すべてのテストを実行
+        function runAllTests() {
+            updateStatus('すべてのテスト実行を開始します...', 'info', 'overallTestStatus');
+            document.getElementById('overallTestOutput').textContent = '全テスト実行中...\n';
+
+            // エラー監視を開始
+            startErrorMonitoring();
+
+            // テストを順次実行
+            setTimeout(() => testActorSelection(), 500);
+            setTimeout(() => testLoopDialog(), 1500);
+            setTimeout(() => testParallelDialog(), 2500);
+            setTimeout(() => generateReport(), 4000);
+        }
+
+        // レポート生成
+        function generateReport() {
+            let report = `========================================\n`;
+            report += `PlantUML エディター 検証レポート\n`;
+            report += `生成日時: ${new Date().toLocaleString()}\n`;
+            report += `========================================\n\n`;
+
+            // テスト結果サマリー
+            report += `【テスト結果サマリー】\n`;
+            let passCount = 0;
+            let totalCount = 0;
+            
+            for (const [testName, result] of Object.entries(testResults)) {
+                totalCount++;
+                const status = result === 'success' ? '✅ PASS' : 
+                              result === 'error' ? '❌ FAIL' : 
+                              result === 'warning' ? '⚠️ WARNING' : '⏸️ PENDING';
+                report += `- ${testName}: ${status}\n`;
+                if (result === 'success') passCount++;
+            }
+
+            report += `\n成功率: ${totalCount > 0 ? Math.round((passCount / totalCount) * 100) : 0}% (${passCount}/${totalCount})\n\n`;
+
+            // エラーログ
+            if (errorLog.length > 0) {
+                report += `【検出されたエラー】\n`;
+                errorLog.forEach((log, index) => {
+                    report += `${index + 1}. [${log.type}] ${log.message}\n`;
+                });
+                report += `\n`;
+            } else {
+                report += `【検出されたエラー】\nエラーは検出されませんでした。\n\n`;
+            }
+
+            // 推奨事項
+            report += `【推奨事項】\n`;
+            if (testResults.getCurrentActors === 'error') {
+                report += `- getCurrentActorsメソッドの修正が必要です\n`;
+            }
+            if (testResults.loopDialog === 'error') {
+                report += `- ループダイアログ機能の修正が必要です\n`;
+            }
+            if (testResults.parallelDialog === 'error') {
+                report += `- 並列処理ダイアログ機能の修正が必要です\n`;
+            }
+            if (errorLog.length > 0) {
+                report += `- ${errorLog.length}件のエラーの修正が推奨されます\n`;
+            }
+            if (passCount === totalCount && errorLog.length === 0) {
+                report += `- すべてのテストが成功しています。アプリケーションは正常に動作しています。\n`;
+            }
+
+            document.getElementById('overallTestOutput').textContent = report;
+            
+            const overallStatus = passCount === totalCount && errorLog.length === 0 ? 'success' : 
+                                 passCount > totalCount / 2 ? 'warning' : 'error';
+            updateStatus(`全テスト完了。成功率: ${Math.round((passCount / totalCount) * 100)}%`, overallStatus, 'overallTestStatus');
+        }
+
+        // ステータス更新ヘルパー
+        function updateStatus(message, type, elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = message;
+                element.className = `status ${type}`;
+            }
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('動作検証テストページが読み込まれました', 'success', 'overallTestStatus');
+            
+            // メインアプリが読み込まれるのを待ってから一部テストを自動実行
+            setTimeout(() => {
+                // エラー監視を自動開始
+                startErrorMonitoring();
+            }, 2000);
+        });
+
+        // ページアンロード時にエラー監視を停止
+        window.addEventListener('beforeunload', function() {
+            if (errorMonitoringActive) {
+                stopErrorMonitoring();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
  * PlantUMLコード直接編集とUIへの双方向同期機能の検証
  */
 
-const { chromium } = require('playwright');
+const playwright = require('playwright');
 
 // 環境変数からベースURLを取得
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8086';

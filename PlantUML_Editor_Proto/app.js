@@ -19,7 +19,15 @@ function loadPhase3Modules() {
 
 // PlantUMLエディターアプリケーション
 class PlantUMLEditor {
+    // シングルトンパターンの実装
+    static instance = null;
+    
     constructor() {
+        // シングルトンパターンの強制
+        if (PlantUMLEditor.instance) {
+            console.log('[PlantUMLEditor] Returning existing instance');
+            return PlantUMLEditor.instance;
+        }
         this.selectedActors = new Set();
         this.actions = [];
         this.currentMode = 'actor-action';
@@ -60,7 +68,23 @@ class PlantUMLEditor {
         };
         this.parallelBranchCount = 2;
         
+        // シングルトンインスタンスを登録
+        PlantUMLEditor.instance = this;
+        console.log('[PlantUMLEditor] Instance created and registered');
+        
         this.init();
+    }
+
+    /**
+     * シングルトンインスタンスを取得
+     * @returns {PlantUMLEditor} PlantUMLEditorのインスタンス
+     */
+    static getInstance() {
+        if (!PlantUMLEditor.instance) {
+            console.log('[PlantUMLEditor] Creating new instance');
+            PlantUMLEditor.instance = new PlantUMLEditor();
+        }
+        return PlantUMLEditor.instance;
     }
 
     async init() {
@@ -1118,12 +1142,26 @@ class PlantUMLEditor {
             // ドラッグイベントの設定
             this.setupDragEvents(item);
 
-            // 編集イベント（条件分岐等は編集不可とする）
-            if (action.type !== 'condition' && action.type !== 'loop' && action.type !== 'parallel') {
-                item.querySelector('.action-item-text').addEventListener('click', (e) => {
-                    this.editAction(parseInt(e.target.dataset.index));
-                });
-            }
+            // 編集イベント（全てのタイプに対応）
+            item.querySelector('.action-item-text').addEventListener('click', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const action = this.actions[index];
+                
+                switch(action.type) {
+                    case 'condition':
+                        this.editCondition(index);
+                        break;
+                    case 'loop':
+                        this.editLoop(index);
+                        break;
+                    case 'parallel':
+                        this.editParallel(index);
+                        break;
+                    default:
+                        this.editAction(index);
+                        break;
+                }
+            });
 
             item.querySelector('.action-item-delete').addEventListener('click', (e) => {
                 this.removeAction(parseInt(e.target.dataset.index));
@@ -1915,10 +1953,17 @@ class PlantUMLEditor {
                        placeholder="例: 承認処理" autofocus>
             </div>
             <div style="margin-top: 20px; text-align: right;">
-                <button onclick="app.cancelBranchDialog()" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">キャンセル</button>
-                <button onclick="app.saveBranchAction('${branch}')" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">追加</button>
+                <button id="branch-cancel-btn" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">キャンセル</button>
+                <button id="branch-save-btn" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">追加</button>
             </div>
         `;
+
+        // ボタンにイベントリスナーを追加（正しいthisコンテキストを保持）
+        const cancelBtn = dialog.querySelector('#branch-cancel-btn');
+        const saveBtn = dialog.querySelector('#branch-save-btn');
+        
+        cancelBtn.addEventListener('click', () => this.cancelBranchDialog());
+        saveBtn.addEventListener('click', () => this.saveBranchAction(branch));
 
         // 背景のオーバーレイ
         const overlay = document.createElement('div');
@@ -2110,10 +2155,17 @@ class PlantUMLEditor {
                        placeholder="例: データ処理" autofocus>
             </div>
             <div style="margin-top: 20px; text-align: right;">
-                <button onclick="app.cancelLoopDialog()" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">キャンセル</button>
-                <button onclick="app.saveLoopAction()" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">追加</button>
+                <button id="loop-cancel-btn" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">キャンセル</button>
+                <button id="loop-save-btn" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">追加</button>
             </div>
         `;
+
+        // ボタンにイベントリスナーを追加（正しいthisコンテキストを保持）
+        const cancelBtn = dialog.querySelector('#loop-cancel-btn');
+        const saveBtn = dialog.querySelector('#loop-save-btn');
+        
+        cancelBtn.addEventListener('click', () => this.cancelLoopDialog());
+        saveBtn.addEventListener('click', () => this.saveLoopAction());
 
         // 背景のオーバーレイ
         const overlay = document.createElement('div');
@@ -2310,10 +2362,17 @@ class PlantUMLEditor {
                        placeholder="例: 在庫確認" autofocus>
             </div>
             <div style="margin-top: 20px; text-align: right;">
-                <button onclick="app.cancelParallelDialog()" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">キャンセル</button>
-                <button onclick="app.saveParallelAction(${branchIndex})" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">追加</button>
+                <button id="parallel-cancel-btn" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer;">キャンセル</button>
+                <button id="parallel-save-btn" style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">追加</button>
             </div>
         `;
+
+        // ボタンにイベントリスナーを追加（正しいthisコンテキストを保持）
+        const cancelBtn = dialog.querySelector('#parallel-cancel-btn');
+        const saveBtn = dialog.querySelector('#parallel-save-btn');
+        
+        cancelBtn.addEventListener('click', () => this.cancelParallelDialog());
+        saveBtn.addEventListener('click', () => this.saveParallelAction(branchIndex));
 
         // 背景のオーバーレイ
         const overlay = document.createElement('div');
@@ -3987,6 +4046,554 @@ EC --> Customer: 確認メール
         }
         
         return true;
+    }
+
+    // 条件分岐編集機能
+    editCondition(index) {
+        const action = this.actions[index];
+        
+        // 編集状態管理
+        this.editingConditionIndex = index;
+        this.tempConditionData = {
+            type: action.conditionType,
+            name: action.conditionName,
+            trueBranch: [...(action.trueBranch || [])],
+            falseBranch: [...(action.falseBranch || [])]
+        };
+        
+        this.showConditionEditModal(action);
+    }
+
+    showConditionEditModal(action) {
+        // モーダルオーバーレイの作成
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-dialog condition-edit-modal" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h3>🔀 条件分岐の編集</h3>
+                    <button class="modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">条件名:</label>
+                        <input type="text" id="edit-condition-name" value="${action.conditionName || ''}" 
+                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">条件タイプ:</label>
+                        <select id="edit-condition-type" style="width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="if-else" ${action.conditionType === 'if-else' ? 'selected' : ''}>if-else</option>
+                            <option value="switch" ${action.conditionType === 'switch' ? 'selected' : ''}>switch</option>
+                        </select>
+                    </div>
+                    
+                    <div class="branch-section" style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px;">
+                        <h4 style="margin-bottom: 10px; color: #28a745;">✅ 真の場合</h4>
+                        <div id="edit-true-branch" style="min-height: 50px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;"></div>
+                    </div>
+                    
+                    <div class="branch-section" style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px;">
+                        <h4 style="margin-bottom: 10px; color: #dc3545;">❌ 偽の場合</h4>
+                        <div id="edit-false-branch" style="min-height: 50px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right;">
+                    <button class="btn-save-condition" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">✓ 保存</button>
+                    <button class="btn-cancel-condition" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ キャンセル</button>
+                </div>
+            </div>
+        `;
+        
+        // スタイル設定
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // イベントリスナーの設定
+        this.setupConditionEditEventListeners(modal);
+        
+        // 既存データの表示
+        this.displayExistingBranches(action);
+        
+        // フォーカス設定
+        setTimeout(() => {
+            document.getElementById('edit-condition-name').focus();
+        }, 100);
+    }
+
+    setupConditionEditEventListeners(modal) {
+        // 保存ボタン
+        modal.querySelector('.btn-save-condition').addEventListener('click', () => {
+            this.saveConditionEdit();
+        });
+        
+        // キャンセルボタン
+        modal.querySelector('.btn-cancel-condition').addEventListener('click', () => {
+            this.cancelConditionEdit();
+        });
+        
+        // 閉じるボタン
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            this.cancelConditionEdit();
+        });
+        
+        // モーダル外クリック
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.cancelConditionEdit();
+            }
+        });
+        
+        // ESCキーでキャンセル
+        document.addEventListener('keydown', this.handleConditionEditKeydown = (e) => {
+            if (e.key === 'Escape') {
+                this.cancelConditionEdit();
+            }
+        });
+    }
+
+    displayExistingBranches(action) {
+        // 真の分岐表示
+        const trueBranchDiv = document.getElementById('edit-true-branch');
+        if (action.trueBranch && action.trueBranch.length > 0) {
+            trueBranchDiv.innerHTML = action.trueBranch.map((branchAction, index) => 
+                `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #28a745;">
+                    ${branchAction.from} → ${branchAction.to}: ${branchAction.text}
+                </div>`
+            ).join('');
+        } else {
+            trueBranchDiv.innerHTML = '<div style="color: #666; font-style: italic;">まだアクションがありません</div>';
+        }
+        
+        // 偽の分岐表示
+        const falseBranchDiv = document.getElementById('edit-false-branch');
+        if (action.falseBranch && action.falseBranch.length > 0) {
+            falseBranchDiv.innerHTML = action.falseBranch.map((branchAction, index) => 
+                `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #dc3545;">
+                    ${branchAction.from} → ${branchAction.to}: ${branchAction.text}
+                </div>`
+            ).join('');
+        } else {
+            falseBranchDiv.innerHTML = '<div style="color: #666; font-style: italic;">まだアクションがありません</div>';
+        }
+    }
+
+    saveConditionEdit() {
+        // バリデーション
+        const name = document.getElementById('edit-condition-name').value.trim();
+        if (!name) {
+            this.showStatus('条件名を入力してください', 'error');
+            return;
+        }
+        
+        // データ更新
+        this.actions[this.editingConditionIndex] = {
+            type: 'condition',
+            conditionType: document.getElementById('edit-condition-type').value,
+            conditionName: name,
+            trueBranch: [...this.tempConditionData.trueBranch],
+            falseBranch: [...this.tempConditionData.falseBranch]
+        };
+        
+        // UI更新
+        this.updateActionList();
+        this.updatePlantUML();
+        
+        // モーダル閉じる
+        this.cancelConditionEdit();
+        
+        // ステータス表示
+        this.showStatus('条件分岐を更新しました', 'success');
+    }
+
+    cancelConditionEdit() {
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // イベントリスナー削除
+        if (this.handleConditionEditKeydown) {
+            document.removeEventListener('keydown', this.handleConditionEditKeydown);
+            this.handleConditionEditKeydown = null;
+        }
+        
+        // 編集状態のリセット
+        this.editingConditionIndex = null;
+        this.tempConditionData = null;
+    }
+
+    // ループ編集機能
+    editLoop(index) {
+        const action = this.actions[index];
+        
+        // 編集状態管理
+        this.editingLoopIndex = index;
+        this.tempLoopData = {
+            condition: action.loopCondition || '',
+            actions: [...(action.loopActions || [])]
+        };
+        
+        this.showLoopEditModal(action);
+    }
+
+    showLoopEditModal(action) {
+        // モーダルオーバーレイの作成
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-dialog loop-edit-modal" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h3>🔁 ループの編集</h3>
+                    <button class="modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">ループ条件:</label>
+                        <input type="text" id="edit-loop-condition" value="${action.loopCondition || ''}" 
+                               placeholder="例：在庫がある間" 
+                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    
+                    <div class="loop-section" style="padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px;">
+                        <h4 style="margin-bottom: 10px; color: #17a2b8;">🔄 ループ内の処理</h4>
+                        <div id="edit-loop-actions" style="min-height: 50px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right;">
+                    <button class="btn-save-loop" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">✓ 保存</button>
+                    <button class="btn-cancel-loop" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ キャンセル</button>
+                </div>
+            </div>
+        `;
+        
+        // スタイル設定
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // イベントリスナーの設定
+        this.setupLoopEditEventListeners(modal);
+        
+        // 既存データの表示
+        this.displayExistingLoopActions(action);
+        
+        // フォーカス設定
+        setTimeout(() => {
+            document.getElementById('edit-loop-condition').focus();
+        }, 100);
+    }
+
+    setupLoopEditEventListeners(modal) {
+        // 保存ボタン
+        modal.querySelector('.btn-save-loop').addEventListener('click', () => {
+            this.saveLoopEdit();
+        });
+        
+        // キャンセルボタン
+        modal.querySelector('.btn-cancel-loop').addEventListener('click', () => {
+            this.cancelLoopEdit();
+        });
+        
+        // 閉じるボタン
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            this.cancelLoopEdit();
+        });
+        
+        // モーダル外クリック
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.cancelLoopEdit();
+            }
+        });
+        
+        // ESCキーでキャンセル
+        document.addEventListener('keydown', this.handleLoopEditKeydown = (e) => {
+            if (e.key === 'Escape') {
+                this.cancelLoopEdit();
+            }
+        });
+    }
+
+    displayExistingLoopActions(action) {
+        const loopActionsDiv = document.getElementById('edit-loop-actions');
+        if (action.loopActions && action.loopActions.length > 0) {
+            loopActionsDiv.innerHTML = action.loopActions.map((loopAction, index) => 
+                `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #17a2b8;">
+                    ${loopAction.from} → ${loopAction.to}: ${loopAction.text}
+                </div>`
+            ).join('');
+        } else {
+            loopActionsDiv.innerHTML = '<div style="color: #666; font-style: italic;">まだアクションがありません</div>';
+        }
+    }
+
+    saveLoopEdit() {
+        // バリデーション
+        const condition = document.getElementById('edit-loop-condition').value.trim();
+        if (!condition) {
+            this.showStatus('ループ条件を入力してください', 'error');
+            return;
+        }
+        
+        // データ更新
+        this.actions[this.editingLoopIndex] = {
+            type: 'loop',
+            loopCondition: condition,
+            loopActions: [...this.tempLoopData.actions]
+        };
+        
+        // UI更新
+        this.updateActionList();
+        this.updatePlantUML();
+        
+        // モーダル閉じる
+        this.cancelLoopEdit();
+        
+        // ステータス表示
+        this.showStatus('ループを更新しました', 'success');
+    }
+
+    cancelLoopEdit() {
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // イベントリスナー削除
+        if (this.handleLoopEditKeydown) {
+            document.removeEventListener('keydown', this.handleLoopEditKeydown);
+            this.handleLoopEditKeydown = null;
+        }
+        
+        // 編集状態のリセット
+        this.editingLoopIndex = null;
+        this.tempLoopData = null;
+    }
+
+    // 並行処理編集機能
+    editParallel(index) {
+        const action = this.actions[index];
+        
+        // 編集状態管理
+        this.editingParallelIndex = index;
+        this.tempParallelData = {
+            branches: action.branches ? action.branches.map(branch => [...branch]) : [[], []]
+        };
+        
+        this.showParallelEditModal(action);
+    }
+
+    showParallelEditModal(action) {
+        // モーダルオーバーレイの作成
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-dialog parallel-edit-modal" style="max-width: 900px;">
+                <div class="modal-header">
+                    <h3>⚡ 並行処理の編集</h3>
+                    <button class="modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <div class="form-group" style="margin-bottom: 20px; text-align: center;">
+                        <button class="btn-add-parallel-branch" 
+                                style="padding: 8px 15px; background-color: #ffc107; color: #212529; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">+ ブランチ追加</button>
+                        <button class="btn-remove-parallel-branch" 
+                                style="padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">- ブランチ削除</button>
+                    </div>
+                    
+                    <div id="edit-parallel-branches" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
+                </div>
+                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right;">
+                    <button class="btn-save-parallel" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">✓ 保存</button>
+                    <button class="btn-cancel-parallel" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ キャンセル</button>
+                </div>
+            </div>
+        `;
+        
+        // スタイル設定
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // イベントリスナーの設定
+        this.setupParallelEditEventListeners(modal);
+        
+        // 既存データの表示
+        this.displayExistingParallelBranches(action);
+        
+        // フォーカス設定
+        setTimeout(() => {
+            const firstBranch = modal.querySelector('.parallel-branch');
+            if (firstBranch) {
+                firstBranch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    }
+
+    setupParallelEditEventListeners(modal) {
+        // 保存ボタン
+        modal.querySelector('.btn-save-parallel').addEventListener('click', () => {
+            this.saveParallelEdit();
+        });
+        
+        // キャンセルボタン
+        modal.querySelector('.btn-cancel-parallel').addEventListener('click', () => {
+            this.cancelParallelEdit();
+        });
+        
+        // 閉じるボタン
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            this.cancelParallelEdit();
+        });
+        
+        // ブランチ追加ボタン
+        modal.querySelector('.btn-add-parallel-branch').addEventListener('click', () => {
+            this.addParallelBranch();
+        });
+        
+        // ブランチ削除ボタン
+        modal.querySelector('.btn-remove-parallel-branch').addEventListener('click', () => {
+            this.removeParallelBranch();
+        });
+        
+        // モーダル外クリック
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.cancelParallelEdit();
+            }
+        });
+        
+        // ESCキーでキャンセル
+        document.addEventListener('keydown', this.handleParallelEditKeydown = (e) => {
+            if (e.key === 'Escape') {
+                this.cancelParallelEdit();
+            }
+        });
+    }
+
+    displayExistingParallelBranches(action) {
+        const branchesDiv = document.getElementById('edit-parallel-branches');
+        branchesDiv.innerHTML = '';
+        
+        const branches = action.branches || [[], []];
+        branches.forEach((branch, branchIndex) => {
+            const branchDiv = document.createElement('div');
+            branchDiv.className = 'parallel-branch';
+            branchDiv.style.cssText = `
+                flex: 1;
+                min-width: 250px;
+                padding: 15px;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+            `;
+            
+            branchDiv.innerHTML = `
+                <h5 style="margin-bottom: 10px; color: #6f42c1;">ブランチ ${branchIndex + 1}</h5>
+                <div class="branch-actions" style="min-height: 50px;">
+                    ${branch.map((branchAction, actionIndex) => 
+                        `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #6f42c1;">
+                            ${branchAction.from} → ${branchAction.to}: ${branchAction.text}
+                        </div>`
+                    ).join('') || '<div style="color: #666; font-style: italic;">まだアクションがありません</div>'}
+                </div>
+            `;
+            
+            branchesDiv.appendChild(branchDiv);
+        });
+    }
+
+    addParallelBranch() {
+        this.tempParallelData.branches.push([]);
+        const action = { branches: this.tempParallelData.branches };
+        this.displayExistingParallelBranches(action);
+    }
+
+    removeParallelBranch() {
+        if (this.tempParallelData.branches.length > 1) {
+            this.tempParallelData.branches.pop();
+            const action = { branches: this.tempParallelData.branches };
+            this.displayExistingParallelBranches(action);
+        } else {
+            this.showStatus('最低1つのブランチが必要です', 'error');
+        }
+    }
+
+    saveParallelEdit() {
+        // バリデーション
+        if (this.tempParallelData.branches.length < 1) {
+            this.showStatus('最低1つのブランチが必要です', 'error');
+            return;
+        }
+        
+        // データ更新
+        this.actions[this.editingParallelIndex] = {
+            type: 'parallel',
+            branches: this.tempParallelData.branches.map(branch => [...branch])
+        };
+        
+        // UI更新
+        this.updateActionList();
+        this.updatePlantUML();
+        
+        // モーダル閉じる
+        this.cancelParallelEdit();
+        
+        // ステータス表示
+        this.showStatus('並行処理を更新しました', 'success');
+    }
+
+    cancelParallelEdit() {
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) {
+            modal.remove();
+        }
+        
+        // イベントリスナー削除
+        if (this.handleParallelEditKeydown) {
+            document.removeEventListener('keydown', this.handleParallelEditKeydown);
+            this.handleParallelEditKeydown = null;
+        }
+        
+        // 編集状態のリセット
+        this.editingParallelIndex = null;
+        this.tempParallelData = null;
     }
 }
 

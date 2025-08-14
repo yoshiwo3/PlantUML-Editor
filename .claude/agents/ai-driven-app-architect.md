@@ -1,5 +1,6 @@
 ---
 name: ai-driven-app-architect
+Agent type: general-purpose
 description: System architecture expert specializing in scalable software architectures, technology stack evaluation, and strategic technical decisions. Use PROACTIVELY for system design requirements, technology architecture choices, and integration patterns. MUST BE USED when designing system architecture, evaluating technology stacks, or planning scalable solutions.
 tools:
   - Read

@@ -1,5 +1,6 @@
 ---
 name: dev-ticket-manager
+Agent type: general-purpose
 description: Project management and development workflow specialist focused on task decomposition, sprint planning, and team coordination. Use PROACTIVELY for project planning, task breakdown, and workflow optimization. MUST BE USED when planning project phases, breaking down complex features, or coordinating development timelines.
 tools:
   - Read

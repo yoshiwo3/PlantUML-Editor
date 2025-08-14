@@ -14,7 +14,30 @@ class PlantUMLParser {
         this.locale = options.locale || 'ja';
         this.debugMode = options.debugMode || false;
         this.patterns = this.initializePatterns();
-        this.parseHandlers = this.initializeHandlers();
+        
+        // メソッドバインディングを遅延実行（エラー対策）
+        this._methodsInitialized = false;
+        this.parseHandlers = null;
+        
+        console.log('[PlantUMLParser] Constructor completed with lazy initialization');
+    }
+
+    /**
+     * メソッドの遅延初期化
+     * 初回parse実行時に呼び出されてハンドラーを初期化
+     */
+    ensureMethodsInitialized() {
+        if (!this._methodsInitialized) {
+            console.log('[PlantUMLParser] Initializing methods lazily');
+            try {
+                this.parseHandlers = this.initializeHandlers();
+                this._methodsInitialized = true;
+                console.log('[PlantUMLParser] Methods initialized successfully');
+            } catch (error) {
+                console.error('[PlantUMLParser] Failed to initialize methods:', error);
+                throw error;
+            }
+        }
     }
 
     /**
@@ -71,13 +94,30 @@ class PlantUMLParser {
      * パースハンドラーの初期化
      */
     initializeHandlers() {
-        return {
-            actor: this.handleActor.bind(this),
-            message: this.handleMessage.bind(this),
-            structure: this.handleStructure.bind(this),
-            note: this.handleNote.bind(this),
-            activation: this.handleActivation.bind(this)
+        // メソッドの存在確認とエラーハンドリング
+        const handlers = {};
+        
+        const methodMap = {
+            actor: 'handleActor',
+            message: 'handleMessage', 
+            structure: 'handleStructure',
+            note: 'handleNote',
+            activation: 'handleActivation'
         };
+        
+        for (const [key, methodName] of Object.entries(methodMap)) {
+            if (typeof this[methodName] === 'function') {
+                handlers[key] = this[methodName].bind(this);
+            } else {
+                console.warn(`[PlantUMLParser] Method ${methodName} not found, using stub`);
+                handlers[key] = (line) => {
+                    this.log(`Stub handler called for ${key}`, { line });
+                    return { type: key, content: line };
+                };
+            }
+        }
+        
+        return handlers;
     }
 
     /**
@@ -95,6 +135,9 @@ class PlantUMLParser {
      * メインパース関数
      */
     parse(code) {
+        // 遅延初期化の確実な実行
+        this.ensureMethodsInitialized();
+        
         this.log('Starting parse', { codeLength: code.length });
         
         // 前処理
@@ -652,6 +695,31 @@ class PlantUMLParser {
             errors,
             warnings
         };
+    }
+
+    handleActor(line) {
+        this.log('handleActor called', { line });
+        return { type: 'actor', content: line };
+    }
+
+    handleMessage(line) {
+        this.log('handleMessage called', { line });
+        return { type: 'message', content: line };
+    }
+
+    handleStructure(line) {
+        this.log('handleStructure called', { line });
+        return { type: 'structure', content: line };
+    }
+
+    handleNote(line) {
+        this.log('handleNote called', { line });
+        return { type: 'note', content: line };
+    }
+
+    handleActivation(line) {
+        this.log('handleActivation called', { line });
+        return { type: 'activation', content: line };
     }
 }
 

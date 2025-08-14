@@ -1,5 +1,6 @@
 ---
 name: web-debug-specialist
+Agent type: general-purpose
 description: Frontend development and debugging specialist focused on UI implementation, performance optimization, and browser compatibility. Use PROACTIVELY for frontend architecture issues, debugging challenges, and performance problems. MUST BE USED when implementing UI components, optimizing web performance, or resolving browser compatibility issues.
 tools:
   - Read

@@ -1,5 +1,6 @@
 ---
 name: webapp-test-automation
+Agent type: general-purpose
 description: Web application test automation and quality assurance specialist focused on comprehensive testing strategies, automated test frameworks, and quality metrics. Use PROACTIVELY for test strategy design, quality assurance planning, and test automation implementation. MUST BE USED when designing test strategies, implementing test automation, or establishing quality gates.
 tools: Read, Write, Grep, Glob, Bash, Task, TodoWrite, WebSearch, ExitPlanMode
 model: sonnet

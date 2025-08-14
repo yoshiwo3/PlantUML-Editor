@@ -80,8 +80,21 @@
       "Bash(npm run test:*)",
       "Bash(git rm:*)",
       "Bash(git remote add:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(npm test)",
+      "Bash(npm test:*)",
+      "mcp__playwright__browser_drag",
+      "mcp__playwright__browser_resize",
+      "Bash(cmd /c:*)",
+      "Bash(copy app.js \"app.js.backup.20250814_1256\")",
+      "Bash(copy app.js app.js.backup.20250814_1245)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c\\d\\PlantUML",
+      "C:\\mnt\\c\\d\\PlantUML",
+      "C:\\mnt\\c\\d"
+    ]
   }
 }

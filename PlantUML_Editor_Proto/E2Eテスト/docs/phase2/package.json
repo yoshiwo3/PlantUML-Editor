@@ -1,0 +1,24 @@
+{
+  "name": "plantuml-editor-e2e-tests-phase2",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "description": "Phase 2 E2E tests for PlantUML Editor",
+  "scripts": {
+    "test:sync": "node test-sync-functionality.cjs",
+    "test:complex": "node test-complex-flows.cjs",
+    "test:performance": "node test-performance-metrics.cjs",
+    "test:all": "node test-runner-phase2.cjs",
+    "docker:build": "docker-compose build",
+    "docker:test": "docker-compose run --rm playwright npm run test:all",
+    "docker:test:sync": "docker-compose run --rm playwright npm run test:sync",
+    "docker:test:complex": "docker-compose run --rm playwright npm run test:complex",
+    "docker:test:performance": "docker-compose run --rm playwright npm run test:performance",
+    "docker:shell": "docker-compose run --rm playwright bash"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  }
+}

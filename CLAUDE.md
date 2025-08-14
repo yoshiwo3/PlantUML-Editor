@@ -9,29 +9,119 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## ⚠️ 最重要：必ず守るべき6原則
 
-### 🔴 原則1: TodoWriteを必ず使用
+### 🔴 原則1: TodoWriteの積極的な使用
 3ステップ以上の作業は必ずTodoWriteで管理
 
-### 🔴 原則2: サブエージェントを必ず使用  
-複雑な処理は必ずTask toolで実行（担当エージェントがいない場合は自分で実施可）
+### 🔴 原則2: カスタムエージェントの積極的な使用  
+下記の例を参考にTask toolからカスタムエージェントを呼び出してください
 
-### 🔴 原則3: MCPサーバーを必ず使用
-外部連携が可能な場合は必ずMCPを活用
+#### 方法1：：general-purposeタイプとして実行
+```javascript
+// カスタムエージェントを呼び出す正しい方法
+await Task({
+  description: "タスクの簡潔な説明",
+  subagent_type: "general-purpose",  
+  prompt: `
+    # Role: [カスタムエージェント名]
+    
+    You are the [エージェント名] agent with the following configuration:
+    - Name: [エージェント名]
+    - Type: [専門分野]
+    - Focus: [主要な責任領域]
+    
+    ## Your Task
+    [具体的なタスク内容]
+    
+    ## Your Expertise
+    [エージェントの専門知識リスト]
+    
+    ## Instructions
+    [詳細な実行指示]
+  `
+});
+```
 
-### 🔴 原則4: ソース版管理（Git/GitHub）を必ず実施
+#### 方法2：エージェント定義を活用した呼び出し
+
+```javascript
+// 1. まずエージェント定義を読み込む
+const agentConfig = await Read({
+  file_path: "C:\\d\\PlantUML\\.claude\\agents\\web-debug-specialist.md"
+});
+
+// 2. Task toolで実行
+await Task({
+  description: "Frontend Error Fix",
+  subagent_type: "general-purpose",
+  prompt: `
+    ${agentConfig}  // エージェント定義を含める
+    
+    ## Specific Task
+    [実行するタスクの詳細]
+  `
+});
+```
+
+#### 📝 実例：web-debug-specialistの呼び出し
+
+```javascript
+await Task({
+  description: "STEP2 Error Fix",
+  subagent_type: "general-purpose",  // 必須：システムタイプを指定
+  prompt: `
+    # Role: web-debug-specialist
+    
+    You are a frontend debugging specialist with expertise in:
+    - JavaScript debugging and error analysis
+    - DOM manipulation and event handling
+    - Cross-browser compatibility
+    - Performance optimization
+    - UI/UX implementation
+    
+    ## Your Task
+    Analyze and fix the PlantUML Editor STEP2 processing errors:
+    1. PlantUMLParser initialization error
+    2. getCurrentActors method not found
+    3. Event handler context loss
+    
+    ## Technical Standards
+    - Browser Support: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+    - Performance: Lighthouse score >90
+    - Accessibility: WCAG 2.1 AA compliance
+    
+    ## Required Output
+    Create a comprehensive repair plan with:
+    - Root cause analysis
+    - Complete implementation code
+    - Testing strategies
+    - Performance optimization
+    
+    Apply your frontend expertise to solve these issues completely.
+  `
+});
+```
+
+#### 重要なポイント
+1. **カスタムエージェント名は`subagent_type`として使用できない**
+2. **エージェントの専門性はプロンプトで定義**
+3. **エージェント定義ファイルの内容をプロンプトに含める**
+
+### 🔴 原則3: ソース版管理（Git/GitHub）の毎回実施
 コード修正完了時は即時にGitへコミット、可能ならpush→PR作成まで実施
 
-### 🔴 原則5: ClaudeCodeActionsを必ず使用
+### 🔴 原則4: MCPサーバーの積極的な使用
+外部連携が可能な場合は必ずMCPを活用
+
+### 🔴 原則5: ClaudeCodeActionsの積極的な使用
 Git操作、PR作成、コードレビューはClaudeCodeActionsで実行
 
-### 🔴 原則6: Git Worktreesを必ず使用
+### 🔴 原則6: Git Worktreesの積極的な使用
 並行開発、機能ブランチ管理は必ずGit Worktreesで実行
 
 ## 📚 詳細ドキュメント参照
 
 ### コア機能ガイド
 - **TodoWrite詳細**: `.claude/todowrite.md`
-- **サブエージェント仕様**: `.claude/agents/agents guide/サブエージェント作成のベストプラクティス_完全版.md`
 - **MCP活用ガイド**: `.claude/mcp-guide.md`
 - **ClaudeCodeActions**: `.claude/claudecodeactions.md`
 - **Git Worktrees**: `.claude/worktrees.md`
@@ -63,9 +153,8 @@ cd ../PlantUML-feature-[機能名]
 - 完了時は即座に更新
 
 ### 3. 実装
-複雑な作業はサブエージェントに委譲：
-- `general-purpose`: 汎用タスク
-- 専門エージェント: 特定領域のタスク
+複雑な作業はカスタムエージェントに自動委譲：
+- カスタムエージェント: 特定領域のタスク
 - 詳細は `.claude/agents/` 参照
 
 ### 4. 品質保証
@@ -73,23 +162,24 @@ cd ../PlantUML-feature-[機能名]
 - ClaudeCodeActions: 自動レビュー
 - テスト実行: 必須
 
-### 5. リリース
+### 5. ソース版管理（Git）
 ```bash
 git add . && git commit -m "type(scope): subject"
 git push
 # ClaudeCodeActionsでPR作成
 ```
 
-## 🧾 コミットメッセージ規約
+#### 🧾 コミットメッセージ規約
 形式: `type(scope): subject`
 - type: feat, fix, docs, style, refactor, perf, test, ci, chore
 - subject: 72字以内、命令形
 
-## 🤖 利用可能なサブエージェント（概要）
+## 🤖 利用可能なカスタムエージェント（概要）
 
 | エージェント | 用途 | 詳細 |
 |------------|------|------|
-| general-purpose | 汎用・複雑タスク | 全ツール利用可 |
+| main-orchestrator | メインワークフロー統括 | 複雑な処理の全体調整（opus） |
+| agent-orchestrator | エージェント間調整 | 複数エージェントの連携管理（opus） |
 | ai-driven-app-architect | システム設計 | アーキテクチャ専門 |
 | webapp-test-automation | テスト自動化 | 品質保証専門 |
 | web-debug-specialist | フロントエンド | UI/UX専門 |
@@ -98,6 +188,7 @@ git push
 | docker-dev-env-builder | 環境構築 | Docker専門 |
 | mcp-server-setup-expert | MCP統合 | MCP設定専門 |
 | claude-code-config-expert | Claude Code設定 | 環境設定専門 |
+| subagent-developer | エージェント開発 | AI Agent設計・最適化専門 |
 
 詳細仕様は `.claude/agents/` 参照
 
@@ -114,7 +205,7 @@ git push
 ## 📋 TodoWrite必須使用ケース
 
 1. **3ステップ以上の作業**
-2. **PRD作成・更新**
+2. **計画書・設計書・仕様書作成／更新**
 3. **機能実装**
 4. **デバッグ作業**
 5. **リファクタリング**
@@ -127,7 +218,27 @@ git push
 **日本語→PlantUML変換SPA**
 - Docker化Node.js/Express + フロントエンド
 - 環境: http://localhost:8086
-- 詳細: `PRD_完全統合版.md`
+- 詳細: `PRD_Ver1.0.md`
+
+## ⚠️ 重要: Node.js/Playwright互換性情報
+
+### Playwright実行環境
+- **Playwright対応**: Node.js v20まで（v22は未対応）
+- **ローカル環境**: Node.js v22使用時はDocker環境必須
+- **Docker環境**: Node.js v20.18.0 + Playwright構築済み
+
+### E2Eテスト実行方法
+```bash
+# Docker環境でのテスト実行（推奨）
+cd PlantUML_Editor_Proto/E2Eテスト
+docker-compose run --rm playwright npm test
+
+# Phase2テスト実行
+cd docs/phase2
+docker-compose run --rm playwright npm run test:all
+```
+
+詳細: `PlantUML_Editor_Proto/E2Eテスト/README_DOCKER.md`
 
 ## プロジェクト構造
 

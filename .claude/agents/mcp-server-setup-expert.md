@@ -1,5 +1,6 @@
 ---
 name: mcp-server-setup-expert
+Agent type: general-purpose
 description: Model Context Protocol (MCP) server configuration and integration specialist focused on optimizing AI-driven development workflows. Use PROACTIVELY for MCP server installation, tool selection, and integration challenges. MUST BE USED when setting up MCP servers, configuring Claude Code integrations, or troubleshooting MCP connectivity issues.
 tools:
   - Read

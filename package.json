@@ -1,0 +1,130 @@
+{
+  "name": "plantuml-converter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PlantUML Converter - Japanese to PlantUML diagram transformation system",
+  "workspaces": [
+    "jp2plantuml",
+    "PlantUML_Editor_Proto"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:backend": "cd jp2plantuml && npm run dev",
+    "dev:frontend": "cd PlantUML_Editor_Proto && npm run start:node",
+    "start": "cd jp2plantuml && npm start",
+    "start:proto": "cd PlantUML_Editor_Proto && npm start",
+    
+    "test": "jest",
+    "test:unit": "jest --selectProjects jp2plantuml",
+    "test:unit:coverage": "jest --selectProjects jp2plantuml --coverage",
+    "test:integration": "jest --selectProjects integration",
+    "test:performance": "jest --selectProjects performance",
+    "test:all": "jest --coverage --verbose",
+    "test:watch": "jest --watch",
+    
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test tests/e2e/smoke",
+    "test:e2e:critical": "playwright test tests/e2e/critical",
+    "test:e2e:compatibility": "playwright test tests/e2e/compatibility",
+    "test:e2e:mcp-integration": "playwright test tests/playwright-mcp",
+    "test:e2e:parallel": "playwright test --workers=4",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:ui": "playwright test --ui",
+    
+    "test:coverage:combined": "node scripts/combine-coverage.js",
+    "test:coverage:report": "node scripts/generate-coverage-report.js",
+    "test:coverage:upload": "codecov -f coverage/combined/lcov.info",
+    
+    "test:parallel": "concurrently \"npm run test:unit:coverage\" \"npm run test:integration\"",
+    "test:ci": "npm run test:all && npm run test:e2e",
+    "test:full": "npm run test:ci && npm run test:coverage:combined",
+    
+    "test:integration:runner": "node scripts/run-tests.js",
+    "test:integration:coverage": "node scripts/coverage-report.js",
+    "test:integration:performance": "node scripts/performance-test.js",
+    "test:integration:all": "npm run test:integration:runner && npm run test:integration:coverage && npm run test:integration:performance",
+    
+    "playwright:install": "playwright install --with-deps",
+    "playwright:update": "playwright install",
+    "playwright:codegen": "playwright codegen localhost:8086",
+    
+    "coverage:open": "open-cli coverage/combined/lcov-report/index.html || start coverage/combined/lcov-report/index.html",
+    "coverage:clean": "rimraf coverage test-results playwright-report",
+    
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd jp2plantuml && npm run lint",
+    "lint:frontend": "cd PlantUML_Editor_Proto && npm run lint",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd jp2plantuml && npm run build || echo 'Backend build ready'",
+    "build:frontend": "cd PlantUML_Editor_Proto && npm run build",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "clean": "npm run clean:backend && npm run clean:frontend && npm run clean:root && npm run coverage:clean",
+    "clean:backend": "cd jp2plantuml && rm -rf node_modules coverage",
+    "clean:frontend": "cd PlantUML_Editor_Proto && rm -rf node_modules",
+    "clean:root": "rm -rf node_modules",
+    "install:all": "npm install && cd jp2plantuml && npm install && cd ../PlantUML_Editor_Proto && npm install",
+    "update:deps": "npm update && cd jp2plantuml && npm update && cd ../PlantUML_Editor_Proto && npm update",
+    "audit:fix": "npm audit fix && cd jp2plantuml && npm audit fix && cd ../PlantUML_Editor_Proto && npm audit fix",
+    "ci": "npm run install:all && npm run lint && npm run test:ci && npm run build",
+    "prepare": "husky install",
+    "precommit": "npm run lint && npm run test:unit",
+    "prepush": "npm run test:all",
+    
+    "health-check": "node scripts/health-check.js",
+    "performance-check": "node scripts/performance-check.js",
+    "setup": "npm ci && cd jp2plantuml && npm ci && npm run playwright:install",
+    "reset": "npm run clean && npm run setup"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "husky": "^9.0.0",
+    "@playwright/test": "^1.40.0",
+    "jest": "^29.7.0",
+    "jest-html-reporter": "^3.10.2",
+    "jest-html-reporters": "^3.1.0",
+    "jest-junit": "^16.0.0",
+    "babel-jest": "^29.7.0",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "wait-on": "^7.2.0",
+    "open-cli": "^8.0.0",
+    "codecov": "^3.8.3",
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3",
+    "node-fetch": "^3.3.2",
+    "nyc": "^15.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "file:///C:/d/PlantUML"
+  },
+  "keywords": [
+    "plantuml",
+    "diagram",
+    "japanese",
+    "converter",
+    "visualization",
+    "monorepo",
+    "nodejs",
+    "express",
+    "web-app"
+  ],
+  "author": "PlantUML Development Team",
+  "license": "MIT",
+  "volta": {
+    "node": "20.11.0",
+    "npm": "10.2.4"
+  }
+}

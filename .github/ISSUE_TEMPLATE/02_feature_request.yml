@@ -1,0 +1,204 @@
+name: ✨ 機能要求 / Feature Request
+description: 新機能や改善の提案
+title: "[Feature] "
+labels: ["enhancement", "feature-request", "needs-discussion"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ✨ 機能要求
+
+        新機能の提案をありがとうございます！あなたのアイデアがプロジェクトをより良くします。
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: 🎯 解決したい問題・課題
+      description: この機能要求の背景となる問題や課題を説明してください
+      placeholder: |
+        現在、...という問題があります。
+        この問題により、...という困りごとが発生しています。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 💡 提案する解決策
+      description: どのような機能・改善を提案しますか？
+      placeholder: |
+        ...という機能を追加することで、問題を解決できると考えています。
+        具体的には...
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: 👤 ユーザーストーリー
+      description: ユーザー視点での機能の使われ方を記述してください
+      placeholder: |
+        **ユーザーとして、**
+        ...を行いたい
+
+        **なぜなら、**
+        ...という価値・メリットがあるから
+
+        **受け入れ条件:**
+        - ...ができること
+        - ...が表示されること
+        - ...が正しく動作すること
+    validations:
+      required: true
+
+  - type: textarea
+    id: detailed-description
+    attributes:
+      label: 📋 詳細仕様
+      description: 機能の詳細な仕様や動作について説明してください
+      placeholder: |
+        ### 機能概要
+        - ...
+
+        ### 入力・出力
+        - 入力: ...
+        - 出力: ...
+
+        ### 画面・UI設計
+        - ...
+
+        ### 技術的考慮事項
+        - ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: 🎨 モックアップ・参考例
+      description: UI/UXの参考例やモックアップがあれば添付してください
+      placeholder: |
+        ![mockup](画像URLまたはファイル添付)
+
+        参考サイト・アプリケーション:
+        - ...
+        - ...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 📊 優先度
+      description: この機能の優先度を選択してください
+      options:
+        - 低 (Low) - あると便利
+        - 中 (Medium) - 改善につながる
+        - 高 (High) - 重要な機能
+        - 緊急 (Critical) - 必須機能
+      default: 1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: ⚙️ 実装複雑度（予想）
+      description: 実装の複雑度をどの程度と予想しますか？
+      options:
+        - 簡単 (Easy) - 数時間〜1日
+        - 普通 (Medium) - 2-5日程度
+        - 複雑 (Complex) - 1-2週間程度
+        - 非常に複雑 (Very Complex) - 数週間以上
+        - 不明 (Unknown) - 判断できない
+      default: 4
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 🏷️ カテゴリ
+      description: この機能はどの分野に関連しますか？
+      options:
+        - UI/UX改善
+        - 新機能追加
+        - パフォーマンス改善
+        - セキュリティ強化
+        - 国際化・多言語対応
+        - API機能拡張
+        - データ処理改善
+        - 運用・保守性改善
+        - その他
+      multiple: true
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 代替案
+      description: 他に考えられる解決方法や代替案があれば記載してください
+      placeholder: |
+        代替案1: ...
+        メリット: ...
+        デメリット: ...
+
+        代替案2: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: 🎯 成功基準
+      description: この機能が成功したと言える基準を定義してください
+      placeholder: |
+        - ユーザーが...できるようになる
+        - ...の処理時間が50%短縮される
+        - ...エラーの発生率が10%以下になる
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: implementation-readiness
+    attributes:
+      label: 🚀 実装への協力
+      description: 実装に関してご協力いただけることがあれば選択してください
+      options:
+        - label: 要件定義・仕様策定に協力できます
+        - label: 設計・技術選定に協力できます
+        - label: 実装・コーディングに協力できます
+        - label: テスト・品質保証に協力できます
+        - label: ドキュメント作成に協力できます
+        - label: ユーザーフィードバックの提供ができます
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ 確認事項
+      description: 以下の項目を確認してください
+      options:
+        - label: 既存機能や他のIssueと重複していないことを確認しました
+          required: true
+        - label: プロジェクトのスコープに適した提案であることを確認しました
+          required: true
+        - label: 提案内容は実現可能で有益であると考えています
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        ### 📞 次のステップ
+        
+        1. **📋 要件整理**: チームで要件を整理・詳細化します
+        2. **🎯 優先度設定**: プロダクトロードマップと照らし合わせ優先度を決定します
+        3. **⚙️ 技術検討**: 技術的実現性と実装方法を検討します
+        4. **🚀 実装計画**: スケジュールとリソースを調整して実装計画を立てます
+        
+        **素晴らしいアイデアをありがとうございます！**
+        チームでしっかりと検討させていただきます。
