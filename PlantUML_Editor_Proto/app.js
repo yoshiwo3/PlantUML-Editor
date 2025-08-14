@@ -37,6 +37,9 @@ class PlantUMLEditor {
         this.isUpdatingFromCode = false; // コードからUI更新中フラグ
         this.codeChangeTimeout = null; // デバウンス用タイマー
         
+        // Phase 1: EditModalManager統合（改修計画v4）
+        this.editModalManager = null;
+        
         // Phase 2改善版: モジュール化されたパーサーと状態管理
         this.parser = null;
         this.stateManager = null;
@@ -108,6 +111,15 @@ class PlantUMLEditor {
      */
     initializeModularComponents() {
         try {
+            // Phase 1: EditModalManagerの初期化（改修計画v4）
+            if (typeof EditModalManager !== 'undefined') {
+                this.editModalManager = new EditModalManager();
+                console.log('[PlantUMLEditor] EditModalManagerを初期化しました');
+                
+                // グローバル参照として登録
+                window.app = this;
+            }
+            
             // PlantUMLParserの初期化
             if (typeof PlantUMLParser !== 'undefined') {
                 this.parser = new PlantUMLParser({ 

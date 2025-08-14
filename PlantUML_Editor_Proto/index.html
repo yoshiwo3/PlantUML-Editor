@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlantUML変換エディター</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="modal-styles.css">
 </head>
 <body>
     <div class="app-container">
@@ -1269,6 +1270,10 @@ end ref</pre>
     <script src="MemoryManager.js"></script>
     <script src="ErrorBoundary.js"></script>
     
+    <!-- Phase 1: Edit Modal System (改修計画v4) -->
+    <script src="EditModalManager.js"></script>
+    <script src="ActionEditor.js"></script>
+    
     <!-- Phase 4: 品質保証と最適化 -->
     <!-- フリーズ問題のため一時的に無効化 - 2025-08-13 -->
     <!--
@@ -1279,6 +1284,6 @@ end ref</pre>
     
     <script src="drawio-converter.js"></script>
     <!-- キャッシュバスティング対策: タイムスタンプパラメータ追加 -->
-    <script src="app.js?v=20250814050600"></script>
+    <script src="app.js?v=20250814161500"></script>
 </body>
 </html>
