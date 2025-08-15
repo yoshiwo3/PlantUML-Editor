@@ -3,10 +3,16 @@
  * 
  * アクション編集用コンポーネント集
  * 条件分岐・ループ・並行処理内のアクション管理
+ * SafeDOMManagerを使用してDOM操作を安全化
  * 
- * @version 1.0.0
- * @date 2025-08-14
+ * @version 1.1.0 - SafeDOMManager統合版
+ * @date 2025-08-15
  */
+
+// SafeDOMManagerが利用可能かチェック
+if (typeof window !== 'undefined' && !window.SafeDOMManager) {
+    console.error('[ActionEditor] SafeDOMManager is required but not found');
+}
 
 /**
  * ActionList - アクション一覧表示コンポーネント
@@ -26,6 +32,12 @@ class ActionList {
         this.selectedAction = null;
         this.listeners = new Map();
         
+        // SafeDOMManager インスタンス作成
+        this.safeDOMManager = new window.SafeDOMManager({
+            enableLogging: true,
+            strictMode: false
+        });
+        
         this.initialize();
     }
 
@@ -38,30 +50,48 @@ class ActionList {
     }
 
     /**
-     * レンダリング
+     * レンダリング（SafeDOMManager使用）
      */
     render() {
+        // コンテナをクリア
         this.container.innerHTML = '';
         
-        // ヘッダー
-        const header = document.createElement('div');
-        header.className = 'action-list-header';
-        header.innerHTML = `
-            <h4>アクション一覧</h4>
-            ${this.options.addable ? 
-                '<button class="btn-add-action" title="新規アクション追加">+</button>' : ''}
-        `;
+        // ヘッダー作成
+        const header = this.safeDOMManager.createElement('div', {
+            'class': 'action-list-header'
+        });
+        
+        // タイトル作成
+        const title = this.safeDOMManager.createElement('h4', {}, 'アクション一覧');
+        header.appendChild(title);
+        
+        // 追加ボタン作成（オプション）
+        if (this.options.addable) {
+            const addButton = this.safeDOMManager.createElement('button', {
+                'class': 'btn-add-action',
+                'title': '新規アクション追加'
+            }, '+');
+            header.appendChild(addButton);
+        }
+        
         this.container.appendChild(header);
         
-        // アクションリスト
-        const listContainer = document.createElement('div');
-        listContainer.className = 'action-list-container';
+        // アクションリストコンテナ作成
+        const listContainer = this.safeDOMManager.createElement('div', {
+            'class': 'action-list-container'
+        });
         
         if (this.actions.length === 0) {
-            listContainer.innerHTML = '<div class="action-list-empty">アクションがありません</div>';
+            // 空のメッセージ表示
+            const emptyMessage = this.safeDOMManager.createElement('div', {
+                'class': 'action-list-empty'
+            }, 'アクションがありません');
+            listContainer.appendChild(emptyMessage);
         } else {
-            const ul = document.createElement('ul');
-            ul.className = 'action-list';
+            // アクションリスト作成
+            const ul = this.safeDOMManager.createElement('ul', {
+                'class': 'action-list'
+            });
             
             this.actions.forEach((action, index) => {
                 const li = this.createActionItem(action, index);

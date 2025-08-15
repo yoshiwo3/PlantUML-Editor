@@ -117,26 +117,32 @@
   ],
   "author": "PlantUML変換ツール開発チーム",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "dompurify": "^3.0.5"
+  },
   "devDependencies": {
+    "@babel/core": "^7.28.3",
+    "@babel/preset-env": "^7.28.3",
+    "@playwright/test": "^1.40.0",
+    "@types/dompurify": "^3.0.5",
+    "@types/jest": "^29.5.0",
+    "babel-jest": "^29.7.0",
     "chokidar-cli": "^3.0.0",
     "concurrently": "^8.2.2",
     "http-server": "^14.1.1",
-    "live-server": "^1.2.2",
-    "open-cli": "^8.0.0",
-    "serve": "^14.2.1",
-    "wait-on": "^7.2.0",
-    "watch": "^1.0.2",
-    "@playwright/test": "^1.40.0",
-    "@types/jest": "^29.5.0",
-    "babel-jest": "^29.5.0",
     "jest": "^29.5.0",
     "jest-environment-jsdom": "^29.5.0",
+    "jest-extended": "^4.0.2",
     "jest-html-reporter": "^3.10.0",
     "jest-junit": "^16.0.0",
     "jsdom": "^22.0.0",
     "jsdom-global": "^3.0.2",
-    "playwright": "^1.40.0"
+    "live-server": "^1.2.2",
+    "open-cli": "^8.0.0",
+    "playwright": "^1.40.0",
+    "serve": "^14.2.1",
+    "wait-on": "^7.2.0",
+    "watch": "^1.0.2"
   },
   "engines": {
     "node": ">=16.0.0",
@@ -170,7 +176,13 @@
   ],
   "config": {
     "defaultPort": 8080,
-    "fallbackPorts": [3000, 3001, 8000, 8001, 9000],
+    "fallbackPorts": [
+      3000,
+      3001,
+      8000,
+      8001,
+      9000
+    ],
     "openBrowser": true,
     "enableCORS": true,
     "enableHTTPS": false

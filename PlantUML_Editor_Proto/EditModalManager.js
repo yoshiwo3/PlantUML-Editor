@@ -3,10 +3,16 @@
  * 
  * 統合モーダル管理システム
  * 条件分岐・ループ・並行処理の編集機能を統合管理
+ * SafeDOMManagerを使用してDOM操作を安全化
  * 
- * @version 1.0.0
- * @date 2025-08-14
+ * @version 1.1.0 - SafeDOMManager統合版
+ * @date 2025-08-15
  */
+
+// SafeDOMManagerが利用可能かチェック
+if (typeof window !== 'undefined' && !window.SafeDOMManager) {
+    console.error('[EditModalManager] SafeDOMManager is required but not found');
+}
 
 /**
  * トランザクション管理クラス
@@ -90,6 +96,12 @@ class ErrorHandler {
         
         this.errorHistory = [];
         this.maxHistorySize = 100;
+        
+        // SafeDOMManager インスタンス作成
+        this.safeDOMManager = new window.SafeDOMManager({
+            enableLogging: true,
+            strictMode: false
+        });
     }
 
     /**
@@ -184,7 +196,7 @@ class ErrorHandler {
     }
 
     /**
-     * エラー通知表示
+     * エラー通知表示（SafeDOMManager使用）
      */
     showErrorNotification(message, errorInfo) {
         // 既存の通知を削除
@@ -193,23 +205,52 @@ class ErrorHandler {
             existingNotification.remove();
         }
         
-        // 新しい通知を作成
-        const notification = document.createElement('div');
-        notification.className = 'error-notification';
-        notification.innerHTML = `
-            <div class="error-notification-content">
-                <div class="error-notification-icon">⚠️</div>
-                <div class="error-notification-message">${message}</div>
-                <button class="error-notification-close">×</button>
-            </div>
-            ${errorInfo.type === this.errorTypes.VALIDATION ? 
-                '<div class="error-notification-details">' + this.getValidationDetails(errorInfo) + '</div>' : ''}
-        `;
+        // 新しい通知を作成（SafeDOMManagerを使用）
+        const notification = this.safeDOMManager.createElement('div', {
+            'class': 'error-notification'
+        });
         
-        // クローズボタンのイベント
-        notification.querySelector('.error-notification-close').addEventListener('click', () => {
+        // コンテンツ部分を作成
+        const content = this.safeDOMManager.createElement('div', {
+            'class': 'error-notification-content'
+        });
+        
+        // アイコン要素
+        const icon = this.safeDOMManager.createElement('div', {
+            'class': 'error-notification-icon'
+        }, '⚠️');
+        
+        // メッセージ要素
+        const messageElement = this.safeDOMManager.createElement('div', {
+            'class': 'error-notification-message'
+        });
+        this.safeDOMManager.setTextContent(messageElement, message);
+        
+        // クローズボタン
+        const closeButton = this.safeDOMManager.createElement('button', {
+            'class': 'error-notification-close'
+        }, '×');
+        
+        // イベントリスナー追加
+        this.safeDOMManager.addEventListener(closeButton, 'click', () => {
             notification.remove();
         });
+        
+        // コンテンツに要素を追加
+        content.appendChild(icon);
+        content.appendChild(messageElement);
+        content.appendChild(closeButton);
+        notification.appendChild(content);
+        
+        // 検証エラーの詳細がある場合は追加
+        if (errorInfo.type === this.errorTypes.VALIDATION) {
+            const details = this.safeDOMManager.createElement('div', {
+                'class': 'error-notification-details'
+            });
+            const validationDetails = this.getValidationDetails(errorInfo);
+            this.safeDOMManager.setInnerHTML(details, validationDetails);
+            notification.appendChild(details);
+        }
         
         document.body.appendChild(notification);
         
