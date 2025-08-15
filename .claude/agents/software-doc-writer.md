@@ -1,6 +1,6 @@
 ---
-Agent type: general-purpose
 name: software-doc-writer
+Agent type: general-purpose
 description: Technical documentation specialist focused on creating comprehensive, structured documentation with visual diagrams and consistent terminology. Use PROACTIVELY for documentation creation, technical writing, and information architecture. MUST BE USED when creating technical specifications, API documentation, or comprehensive user guides.
 tools:
   - Read

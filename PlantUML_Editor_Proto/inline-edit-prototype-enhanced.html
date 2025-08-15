@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https:;">
+    <title>PlantUML Editor - セキュリティ強化版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'メイリオ', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        /* セキュリティステータスバー */
+        .security-status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(90deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .security-status-bar.warning {
+            background: linear-gradient(90deg, #ff9800 0%, #f57c00 100%);
+        }
+        
+        .security-status-bar.danger {
+            background: linear-gradient(90deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        .security-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .security-score {
+            font-weight: bold;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 50px auto 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .security-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        
+        .panel-body {
+            padding: 20px;
+            height: calc(100vh - 170px);
+            overflow-y: auto;
+        }
+        
+        /* 処理フロー欄 */
+        .process-flow {
+            font-size: 14px;
+        }
+        
+        .step-container {
+            margin-bottom: 24px;
+            border-left: 3px solid #e0e0e0;
+            padding-left: 16px;
+            position: relative;
+        }
+        
+        .step-container.active {
+            border-left-color: #2196f3;
+        }
+        
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .step-header:hover {
+            background: #e8e9ea;
+        }
+        
+        .step-number {
+            background: #2196f3;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .step-title {
+            flex: 1;
+            font-weight: 600;
+            color: #424242;
+        }
+        
+        .step-content {
+            padding-left: 44px;
+        }
+        
+        /* 処理ブロック */
+        .process-block {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        
+        .process-block:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .process-block-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+        }
+        
+        .process-icon {
+            font-size: 18px;
+        }
+        
+        .process-icon.condition {
+            color: #2196f3;
+        }
+        
+        .process-icon.loop {
+            color: #4caf50;
+        }
+        
+        .process-icon.parallel {
+            color: #e91e63;
+        }
+        
+        .process-label {
+            flex: 1;
+            font-weight: 500;
+            color: #424242;
+        }
+        
+        .process-condition-input {
+            flex: 2;
+            padding: 4px 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            background: white;
+        }
+        
+        .process-condition-input:focus {
+            outline: none;
+            border-color: #2196f3;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+        }
+        
+        .expand-icon {
+            color: #757575;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        
+        .process-block.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+        
+        .process-block-content {
+            display: none;
+            padding: 12px 14px;
+            background: #fafafa;
+        }
+        
+        .process-block.expanded .process-block-content {
+            display: block;
+        }
+        
+        /* セキュリティ警告 */
+        .security-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 8px 0;
+            display: none;
+            font-size: 12px;
+            color: #856404;
+        }
+        
+        .security-warning.show {
+            display: block;
+        }
+        
+        /* ブランチ */
+        .branch-container {
+            margin-bottom: 8px;
+        }
+        
+        .branch-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .branch-true {
+            border-left: 3px solid #4caf50;
+        }
+        
+        .branch-false {
+            border-left: 3px solid #f44336;
+        }
+        
+        .branch-actions {
+            padding-left: 16px;
+        }
+        
+        /* アクション項目（インライン編集） */
+        .action-item-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+            font-size: 13px;
+            position: relative;
+        }
+        
+        .action-item-inline:hover {
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        
+        .action-item-inline.security-risk {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .drag-handle {
+            color: #bdbdbd;
+            cursor: move;
+            font-size: 14px;
+            user-select: none;
+        }
+        
+        .actor-select-inline {
+            min-width: 60px;
+            max-width: 80px;
+            padding: 3px 6px;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .actor-select-inline:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        
+        .arrow-type-inline {
+            min-width: 45px;
+            padding: 3px 4px;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            color: #424242;
+        }
+        
+        .arrow-type-inline:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        
+        .message-input-inline {
+            flex: 1;
+            padding: 3px 6px;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .message-input-inline:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        
+        .message-input-inline.security-risk {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .action-buttons-inline {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .btn-inline {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            color: #757575;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        
+        .btn-inline:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        
+        .btn-inline.delete:hover {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+        
+        .btn-inline.question {
+            color: #ff9800;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .btn-inline.question:hover {
+            color: #f57c00;
+            background: rgba(255, 152, 0, 0.1);
+        }
+        
+        .btn-inline.question.active {
+            background: #ff9800;
+            color: white;
+        }
+        
+        /* セキュリティアイコン */
+        .btn-inline.security {
+            color: #4caf50;
+            font-size: 12px;
+        }
+        
+        .btn-inline.security.warning {
+            color: #ff9800;
+        }
+        
+        .btn-inline.security.danger {
+            color: #f44336;
+        }
+        
+        /* アクション追加ボタン */
+        .btn-add-action-inline {
+            width: 100%;
+            padding: 6px;
+            margin-top: 6px;
+            border: 1px dashed #2196f3;
+            background: rgba(33, 150, 243, 0.05);
+            color: #2196f3;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .btn-add-action-inline:hover {
+            background: rgba(33, 150, 243, 0.1);
+            border-style: solid;
+        }
+        
+        /* タブシステム（並行処理用） */
+        .thread-tabs {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .thread-tab {
+            padding: 6px 12px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: #757575;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .thread-tab.active {
+            color: #2196f3;
+            border-bottom-color: #2196f3;
+        }
+        
+        .thread-tab-delete {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            background: transparent;
+            color: #999;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 50%;
+            display: none;
+        }
+        
+        .thread-tab:hover .thread-tab-delete {
+            display: block;
+        }
+        
+        .thread-tab-delete:hover {
+            background: #f44336;
+            color: white;
+        }
+        
+        .thread-add-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px dashed #2196f3;
+            background: rgba(33, 150, 243, 0.05);
+            color: #2196f3;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .thread-add-btn:hover {
+            background: rgba(33, 150, 243, 0.1);
+            border-style: solid;
+            transform: scale(1.1);
+        }
+        
+        .thread-content {
+            display: none;
+        }
+        
+        .thread-content.active {
+            display: block;
+        }
+        
+        /* PlantUMLコード欄 */
+        .code-editor {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            background: #263238;
+            color: #aed581;
+            padding: 16px;
+            border-radius: 8px;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        /* ユーティリティボタン */
+        .utility-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .btn-utility {
+            padding: 8px 16px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-utility:hover {
+            background: #1976d2;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+        
+        .btn-utility.secondary {
+            background: white;
+            color: #757575;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .btn-utility.secondary:hover {
+            background: #f5f5f5;
+        }
+        
+        .btn-utility.security {
+            background: #4caf50;
+        }
+        
+        .btn-utility.security:hover {
+            background: #45a049;
+        }
+        
+        /* スクロールバー */
+        .panel-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .panel-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .panel-body::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 4px;
+        }
+        
+        .panel-body::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+        
+        /* セキュリティダッシュボード */
+        .security-dashboard {
+            position: fixed;
+            top: 40px;
+            right: 20px;
+            width: 300px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 16px;
+            display: none;
+            z-index: 999;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .security-dashboard.show {
+            display: block;
+        }
+        
+        .security-dashboard h3 {
+            margin-bottom: 12px;
+            color: #424242;
+            font-size: 16px;
+        }
+        
+        .security-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .security-metric .value {
+            font-weight: bold;
+        }
+        
+        .threat-list {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 8px;
+        }
+        
+        .threat-item {
+            font-size: 12px;
+            padding: 4px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .threat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .threat-severity {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .threat-severity.high {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .threat-severity.medium {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .threat-severity.low {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <!-- セキュリティステータスバー -->
+    <div class="security-status-bar" id="security-status">
+        <div class="security-indicator">
+            <span>🛡️ セキュリティ監視: </span>
+            <span id="security-status-text">システム正常</span>
+        </div>
+        <div class="security-score" id="security-score">スコア: 100</div>
+        <button onclick="toggleSecurityDashboard()" style="background: none; border: none; color: white; cursor: pointer;">
+            📊 詳細
+        </button>
+    </div>
+
+    <!-- セキュリティダッシュボード -->
+    <div class="security-dashboard" id="security-dashboard">
+        <h3>セキュリティダッシュボード</h3>
+        <div class="security-metric">
+            <span>検出された脅威:</span>
+            <span class="value" id="threat-count">0</span>
+        </div>
+        <div class="security-metric">
+            <span>実行されたスキャン:</span>
+            <span class="value" id="scan-count">0</span>
+        </div>
+        <div class="security-metric">
+            <span>最終スキャン:</span>
+            <span class="value" id="last-scan">未実行</span>
+        </div>
+        <div class="threat-list" id="threat-list">
+            <div style="text-align: center; color: #999;">脅威は検出されていません</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 処理フロー欄 -->
+        <div class="panel">
+            <div class="panel-header">
+                📝 処理フロー（セキュリティ強化版）
+                <span class="security-badge">🛡️ 保護済み</span>
+            </div>
+            <div class="panel-body">
+                <div class="utility-buttons">
+                    <button class="btn-utility" onclick="generatePlantUML()">PlantUML生成</button>
+                    <button class="btn-utility secondary" onclick="collapseAll()">すべて折りたたむ</button>
+                    <button class="btn-utility secondary" onclick="expandAll()">すべて展開</button>
+                    <button class="btn-utility security" onclick="runSecurityScan()">セキュリティスキャン</button>
+                </div>
+                
+                <div class="process-flow">
+                    <!-- STEP1: ユーザー入力 -->
+                    <div class="step-container active">
+                        <div class="step-header">
+                            <div class="step-number">1</div>
+                            <div class="step-title">ユーザー入力</div>
+                        </div>
+                        <div class="step-content">
+                            <!-- 通常メッセージ1 -->
+                            <div class="action-item-inline">
+                                <span class="drag-handle">☰</span>
+                                <select class="actor-select-inline">
+                                    <option selected>User</option>
+                                    <option>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <select class="arrow-type-inline">
+                                    <option value="sync" selected>→</option>
+                                    <option value="async">⇢</option>
+                                    <option value="return">⟵</option>
+                                    <option value="async-return">⟸</option>
+                                </select>
+                                <select class="actor-select-inline">
+                                    <option>User</option>
+                                    <option selected>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <input type="text" class="message-input-inline" value="アプリケーション開始" placeholder="メッセージ">
+                                <div class="action-buttons-inline">
+                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                </div>
+                            </div>
+                            
+                            <!-- セキュリティ警告エリア -->
+                            <div class="security-warning" id="security-warning-step1">
+                                ⚠️ セキュリティ警告: 入力内容にリスクが検出されました
+                            </div>
+                            
+                            <!-- 通常メッセージ2 -->
+                            <div class="action-item-inline">
+                                <span class="drag-handle">☰</span>
+                                <select class="actor-select-inline">
+                                    <option>User</option>
+                                    <option selected>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <select class="arrow-type-inline">
+                                    <option value="sync" selected>→</option>
+                                    <option value="async">⇢</option>
+                                    <option value="return">⟵</option>
+                                    <option value="async-return">⟸</option>
+                                </select>
+                                <select class="actor-select-inline">
+                                    <option selected>User</option>
+                                    <option>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <input type="text" class="message-input-inline" value="ログイン画面表示" placeholder="メッセージ">
+                                <div class="action-buttons-inline">
+                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                </div>
+                            </div>
+                            
+                            <!-- 通常メッセージ3 -->
+                            <div class="action-item-inline">
+                                <span class="drag-handle">☰</span>
+                                <select class="actor-select-inline">
+                                    <option selected>User</option>
+                                    <option>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <select class="arrow-type-inline">
+                                    <option value="sync" selected>→</option>
+                                    <option value="async">⇢</option>
+                                    <option value="return">⟵</option>
+                                    <option value="async-return">⟸</option>
+                                </select>
+                                <select class="actor-select-inline">
+                                    <option>User</option>
+                                    <option selected>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <input type="text" class="message-input-inline" value="ログイン要求" placeholder="メッセージ">
+                                <div class="action-buttons-inline">
+                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                </div>
+                            </div>
+                            
+                            <button class="btn-add-action-inline" onclick="addAction(this)">
+                                <span>➕</span>
+                                <span>アクション追加</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- STEP2: 処理 -->
+                    <div class="step-container active">
+                        <div class="step-header">
+                            <div class="step-number">2</div>
+                            <div class="step-title">処理</div>
+                        </div>
+                        <div class="step-content">
+                            <!-- 条件分岐 -->
+                            <div class="process-block expanded">
+                                <div class="process-block-header" onclick="toggleBlock(this)">
+                                    <span class="process-icon condition">🔀</span>
+                                    <span class="process-label">条件分岐:</span>
+                                    <input type="text" class="process-condition-input" value="ユーザー認証" placeholder="条件を入力" onclick="event.stopPropagation()" oninput="validateConditionInput(this)">
+                                    <span class="expand-icon">▶</span>
+                                </div>
+                                <div class="process-block-content">
+                                    <!-- TRUE分岐 -->
+                                    <div class="branch-container">
+                                        <div class="branch-header branch-true">
+                                            <span>✅ TRUE分岐</span>
+                                        </div>
+                                        <div class="branch-actions">
+                                            <div class="action-item-inline">
+                                                <span class="drag-handle">☰</span>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option selected>System</option>
+                                                    <option>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <select class="arrow-type-inline">
+                                                    <option value="sync" selected>→</option>
+                                                    <option value="async">⇢</option>
+                                                    <option value="return">⟵</option>
+                                                    <option value="async-return">⟸</option>
+                                                </select>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option>System</option>
+                                                    <option selected>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <input type="text" class="message-input-inline" value="認証情報を確認" placeholder="メッセージ">
+                                                <div class="action-buttons-inline">
+                                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                                </div>
+                                            </div>
+                                            <button class="btn-add-action-inline" onclick="addAction(this)">
+                                                <span>➕</span>
+                                                <span>アクション追加</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- FALSE分岐 -->
+                                    <div class="branch-container">
+                                        <div class="branch-header branch-false">
+                                            <span>❌ FALSE分岐</span>
+                                        </div>
+                                        <div class="branch-actions">
+                                            <div class="action-item-inline">
+                                                <span class="drag-handle">☰</span>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option selected>System</option>
+                                                    <option>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <select class="arrow-type-inline">
+                                                    <option value="sync" selected>→</option>
+                                                    <option value="async">⇢</option>
+                                                    <option value="return">⟵</option>
+                                                    <option value="async-return">⟸</option>
+                                                </select>
+                                                <select class="actor-select-inline">
+                                                    <option selected>User</option>
+                                                    <option>System</option>
+                                                    <option>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <input type="text" class="message-input-inline" value="認証失敗" placeholder="メッセージ">
+                                                <div class="action-buttons-inline">
+                                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                                </div>
+                                            </div>
+                                            <button class="btn-add-action-inline" onclick="addAction(this)">
+                                                <span>➕</span>
+                                                <span>アクション追加</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- ループ -->
+                            <div class="process-block">
+                                <div class="process-block-header" onclick="toggleBlock(this)">
+                                    <span class="process-icon loop">🔁</span>
+                                    <span class="process-label">ループ:</span>
+                                    <input type="text" class="process-condition-input" value="データが存在する" placeholder="ループ条件を入力" onclick="event.stopPropagation()" oninput="validateConditionInput(this)">
+                                    <span class="expand-icon">▶</span>
+                                </div>
+                                <div class="process-block-content">
+                                    <div class="branch-actions">
+                                        <div class="action-item-inline">
+                                            <span class="drag-handle">☰</span>
+                                            <select class="actor-select-inline">
+                                                <option>User</option>
+                                                <option selected>System</option>
+                                                <option>DB</option>
+                                                <option>API</option>
+                                            </select>
+                                            <select class="arrow-type-inline">
+                                                <option value="sync" selected>→</option>
+                                                <option value="async">⇢</option>
+                                                <option value="return">⟵</option>
+                                                <option value="async-return">⟸</option>
+                                            </select>
+                                            <select class="actor-select-inline">
+                                                <option>User</option>
+                                                <option>System</option>
+                                                <option selected>DB</option>
+                                                <option>API</option>
+                                            </select>
+                                            <input type="text" class="message-input-inline" value="次のデータを取得" placeholder="メッセージ">
+                                            <div class="action-buttons-inline">
+                                                <button class="btn-inline delete" title="削除">🗑️</button>
+                                                <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                                <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                            </div>
+                                        </div>
+                                        <button class="btn-add-action-inline" onclick="addAction(this)">
+                                            <span>➕</span>
+                                            <span>アクション追加</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 並行処理 -->
+                            <div class="process-block">
+                                <div class="process-block-header" onclick="toggleBlock(this)">
+                                    <span class="process-icon parallel">⚡</span>
+                                    <span class="process-label">並行処理</span>
+                                    <span class="expand-icon">▶</span>
+                                </div>
+                                <div class="process-block-content">
+                                    <div class="thread-tabs">
+                                        <button class="thread-tab active" data-thread="1" onclick="switchThread(this, 1)">
+                                            🧵 スレッド1
+                                            <span class="thread-tab-delete" onclick="deleteThread(event, 1)">×</span>
+                                        </button>
+                                        <button class="thread-tab" data-thread="2" onclick="switchThread(this, 2)">
+                                            🧵 スレッド2
+                                            <span class="thread-tab-delete" onclick="deleteThread(event, 2)">×</span>
+                                        </button>
+                                        <button class="thread-add-btn" onclick="addThread()" title="スレッド追加">➕</button>
+                                    </div>
+                                    
+                                    <div class="thread-content active" data-thread-content="1">
+                                        <div class="branch-actions">
+                                            <div class="action-item-inline">
+                                                <span class="drag-handle">☰</span>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option selected>System</option>
+                                                    <option>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <select class="arrow-type-inline">
+                                                    <option value="sync">→</option>
+                                                    <option value="async" selected>⇢</option>
+                                                    <option value="return">⟵</option>
+                                                    <option value="async-return">⟸</option>
+                                                </select>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option>System</option>
+                                                    <option>DB</option>
+                                                    <option selected>API</option>
+                                                </select>
+                                                <input type="text" class="message-input-inline" value="API1を非同期呼び出し" placeholder="メッセージ">
+                                                <div class="action-buttons-inline">
+                                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                                </div>
+                                            </div>
+                                            <button class="btn-add-action-inline" onclick="addAction(this)">
+                                                <span>➕</span>
+                                                <span>アクション追加</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="thread-content" data-thread-content="2">
+                                        <div class="branch-actions">
+                                            <div class="action-item-inline">
+                                                <span class="drag-handle">☰</span>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option selected>System</option>
+                                                    <option>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <select class="arrow-type-inline">
+                                                    <option value="sync">→</option>
+                                                    <option value="async" selected>⇢</option>
+                                                    <option value="return">⟵</option>
+                                                    <option value="async-return">⟸</option>
+                                                </select>
+                                                <select class="actor-select-inline">
+                                                    <option>User</option>
+                                                    <option>System</option>
+                                                    <option selected>DB</option>
+                                                    <option>API</option>
+                                                </select>
+                                                <input type="text" class="message-input-inline" value="データベース非同期更新" placeholder="メッセージ">
+                                                <div class="action-buttons-inline">
+                                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                                </div>
+                                            </div>
+                                            <button class="btn-add-action-inline" onclick="addAction(this)">
+                                                <span>➕</span>
+                                                <span>アクション追加</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- STEP3: 結果表示 -->
+                    <div class="step-container">
+                        <div class="step-header">
+                            <div class="step-number">3</div>
+                            <div class="step-title">結果表示</div>
+                        </div>
+                        <div class="step-content">
+                            <!-- 通常メッセージ -->
+                            <div class="action-item-inline">
+                                <span class="drag-handle">☰</span>
+                                <select class="actor-select-inline">
+                                    <option>User</option>
+                                    <option selected>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <select class="arrow-type-inline">
+                                    <option value="sync" selected>→</option>
+                                    <option value="async">⇢</option>
+                                    <option value="return">⟵</option>
+                                    <option value="async-return">⟸</option>
+                                </select>
+                                <select class="actor-select-inline">
+                                    <option selected>User</option>
+                                    <option>System</option>
+                                    <option>DB</option>
+                                    <option>API</option>
+                                </select>
+                                <input type="text" class="message-input-inline" value="ホーム画面を表示" placeholder="メッセージ">
+                                <div class="action-buttons-inline">
+                                    <button class="btn-inline delete" title="削除">🗑️</button>
+                                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                                </div>
+                            </div>
+                            
+                            <button class="btn-add-action-inline" onclick="addAction(this)">
+                                <span>➕</span>
+                                <span>アクション追加</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PlantUMLコード欄 -->
+        <div class="panel">
+            <div class="panel-header">
+                📄 PlantUMLコード（セキュリティ検証済み）
+                <span class="security-badge">🔍 検証済み</span>
+            </div>
+            <div class="panel-body">
+                <div class="utility-buttons">
+                    <button class="btn-utility" onclick="validatePlantUMLCode()">コード検証</button>
+                    <button class="btn-utility secondary" onclick="copyToClipboard()">コピー</button>
+                    <button class="btn-utility security" onclick="downloadSecureCode()">安全なダウンロード</button>
+                </div>
+                <div class="code-editor" id="plantuml-code">@startuml
+title ログイン処理フロー - セキュリティ強化版
+
+actor User
+participant System
+database DB
+participant API
+
+note over System : セキュリティ監視有効
+
+User -> System : ログイン要求
+note right : 入力値検証実施
+
+alt ユーザー認証
+    System -> DB : 認証情報を確認
+    note over DB : SQL インジェクション対策
+    DB --> System : 認証OK
+    System -> User : ホーム画面表示
+else 認証失敗
+    System -> User : 認証失敗
+    note right : ログ記録・監視
+end
+
+loop データが存在する
+    System -> DB : 次のデータを取得
+    note over DB : データサニタイズ実施
+end
+
+par
+    System ->> API : API1を非同期呼び出し
+    note over API : HTTPS通信・認証トークン
+and
+    System ->> DB : データベース非同期更新
+    note over DB : トランザクション管理
+end
+
+System -> User : 結果を表示
+note over System : XSS対策済み出力
+
+@enduml</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- セキュリティシステムの読み込み -->
+    <script src="src/validation/ValidationEngine.js"></script>
+    <script src="src/security/CSPManager.js"></script>
+    <script src="src/security/SecurityMonitor.js"></script>
+    
+    <script>
+        // グローバル変数
+        let threadCount = 2;
+        let securityMonitor;
+        let validationEngine;
+        let cspManager;
+        let securityScore = 100;
+        let dashboardVisible = false;
+        
+        // セキュリティシステムの初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSecuritySystems();
+        });
+        
+        // セキュリティシステム初期化
+        function initializeSecuritySystems() {
+            try {
+                // ValidationEngine の初期化
+                if (typeof ValidationEngine !== 'undefined') {
+                    validationEngine = new ValidationEngine();
+                    console.log('[App] ValidationEngine 初期化完了');
+                }
+                
+                // CSPManager の初期化
+                if (typeof CSPManager !== 'undefined') {
+                    cspManager = new CSPManager();
+                    cspManager.applyCSP('balanced');
+                    console.log('[App] CSPManager 初期化完了');
+                }
+                
+                // SecurityMonitor の初期化
+                if (typeof SecurityMonitor !== 'undefined') {
+                    securityMonitor = new SecurityMonitor();
+                    securityMonitor.startMonitoring({
+                        interval: 10000, // 10秒間隔
+                        threatDetection: true,
+                        anomalyDetection: true,
+                        realTimeAlerts: true
+                    });
+                    console.log('[App] SecurityMonitor 初期化完了');
+                }
+                
+                // 定期的なセキュリティスコア更新
+                setInterval(updateSecurityStatus, 5000);
+                
+                console.log('[App] セキュリティシステム全体初期化完了');
+                
+            } catch (error) {
+                console.error('[App] セキュリティシステム初期化エラー:', error);
+                updateSecurityStatus('error');
+            }
+        }
+        
+        // セキュリティステータスの更新
+        function updateSecurityStatus(status = 'normal') {
+            const statusBar = document.getElementById('security-status');
+            const statusText = document.getElementById('security-status-text');
+            const scoreElement = document.getElementById('security-score');
+            
+            switch (status) {
+                case 'error':
+                    statusBar.className = 'security-status-bar danger';
+                    statusText.textContent = 'セキュリティエラー';
+                    securityScore = 50;
+                    break;
+                case 'warning':
+                    statusBar.className = 'security-status-bar warning';
+                    statusText.textContent = '注意が必要です';
+                    securityScore = 75;
+                    break;
+                default:
+                    statusBar.className = 'security-status-bar';
+                    statusText.textContent = 'システム正常';
+                    
+                    // SecurityMonitorからスコア取得
+                    if (securityMonitor) {
+                        const scanResult = securityMonitor.performSecurityScan();
+                        securityScore = scanResult.securityScore;
+                        updateDashboard(scanResult);
+                    }
+            }
+            
+            scoreElement.textContent = `スコア: ${securityScore}`;
+        }
+        
+        // セキュリティダッシュボードの表示切り替え
+        function toggleSecurityDashboard() {
+            const dashboard = document.getElementById('security-dashboard');
+            dashboardVisible = !dashboardVisible;
+            dashboard.classList.toggle('show', dashboardVisible);
+        }
+        
+        // ダッシュボードの更新
+        function updateDashboard(scanResult) {
+            if (!dashboardVisible) return;
+            
+            document.getElementById('threat-count').textContent = scanResult.threatsDetected || 0;
+            document.getElementById('last-scan').textContent = new Date().toLocaleTimeString();
+            
+            // 脅威リストの更新
+            const threatList = document.getElementById('threat-list');
+            if (scanResult.threatsDetected > 0) {
+                threatList.innerHTML = scanResult.threats?.map(threat => `
+                    <div class="threat-item">
+                        <span class="threat-severity ${threat.severity}">${threat.severity}</span>
+                        ${threat.description}
+                    </div>
+                `).join('') || '<div style="text-align: center; color: #999;">詳細情報取得中...</div>';
+            } else {
+                threatList.innerHTML = '<div style="text-align: center; color: #999;">脅威は検出されていません</div>';
+            }
+        }
+        
+        // セキュリティスキャンの実行
+        function runSecurityScan() {
+            console.log('[App] 手動セキュリティスキャン開始');
+            
+            if (!securityMonitor) {
+                alert('セキュリティモニターが初期化されていません');
+                return;
+            }
+            
+            const scanResult = securityMonitor.performSecurityScan();
+            
+            alert(`セキュリティスキャン完了\n検出された脅威: ${scanResult.threatsDetected}\nセキュリティスコア: ${scanResult.securityScore}`);
+            
+            updateSecurityStatus(scanResult.securityScore < 70 ? 'warning' : 'normal');
+        }
+        
+        // アクションのセキュリティチェック
+        function checkActionSecurity(button) {
+            const actionItem = button.closest('.action-item-inline');
+            const messageInput = actionItem.querySelector('.message-input-inline');
+            const message = messageInput.value;
+            
+            if (!validationEngine) {
+                alert('ValidationEngine が初期化されていません');
+                return;
+            }
+            
+            // セキュリティ検証
+            const validation = validationEngine.validateInput(message);
+            
+            // UIの更新
+            if (validation.isValid) {
+                actionItem.classList.remove('security-risk');
+                messageInput.classList.remove('security-risk');
+                button.className = 'btn-inline security';
+                button.title = 'セキュリティチェック完了 - 安全';
+                alert('✅ セキュリティチェック: 問題なし');
+            } else {
+                actionItem.classList.add('security-risk');
+                messageInput.classList.add('security-risk');
+                button.className = 'btn-inline security danger';
+                button.title = 'セキュリティリスク検出';
+                
+                let riskDetails = '';
+                if (validation.security && validation.security.riskLevel !== 'safe') {
+                    riskDetails += `セキュリティリスク: ${validation.security.riskLevel}\n`;
+                    if (validation.security.xss.length > 0) {
+                        riskDetails += `XSS攻撃パターン検出: ${validation.security.xss.length}件\n`;
+                    }
+                    if (validation.security.injection.length > 0) {
+                        riskDetails += `インジェクション攻撃検出: ${validation.security.injection.length}件\n`;
+                    }
+                }
+                
+                alert(`⚠️ セキュリティリスク検出\n\n${riskDetails}\n修正をお勧めします。`);
+            }
+        }
+        
+        // 条件入力の検証
+        function validateConditionInput(input) {
+            if (!validationEngine) return;
+            
+            const validation = validationEngine.validateInput(input.value);
+            
+            if (!validation.isValid) {
+                input.style.borderColor = '#f44336';
+                input.style.background = '#ffebee';
+            } else {
+                input.style.borderColor = '#e0e0e0';
+                input.style.background = 'white';
+            }
+        }
+        
+        // PlantUMLコードの検証
+        function validatePlantUMLCode() {
+            const codeElement = document.getElementById('plantuml-code');
+            const code = codeElement.textContent;
+            
+            if (!validationEngine) {
+                alert('ValidationEngine が初期化されていません');
+                return;
+            }
+            
+            const validation = validationEngine.validateInput(code);
+            
+            if (validation.isValid) {
+                alert('✅ PlantUMLコード検証: 問題なし');
+            } else {
+                alert('⚠️ PlantUMLコードにセキュリティリスクが検出されました');
+            }
+        }
+        
+        // 安全なダウンロード
+        function downloadSecureCode() {
+            const code = document.getElementById('plantuml-code').textContent;
+            
+            if (!validationEngine) {
+                alert('ValidationEngine が初期化されていません');
+                return;
+            }
+            
+            // セキュリティチェック
+            const validation = validationEngine.validateInput(code);
+            
+            if (!validation.isValid) {
+                const proceed = confirm('セキュリティリスクが検出されました。続行しますか？');
+                if (!proceed) return;
+            }
+            
+            // 安全なダウンロード実行
+            const sanitizedCode = cspManager ? cspManager.sanitizeContent(code) : code;
+            const blob = new Blob([sanitizedCode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'plantuml_secure_' + new Date().toISOString().slice(0, 10) + '.puml';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // クリップボードにコピー
+        function copyToClipboard() {
+            const code = document.getElementById('plantuml-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('PlantUMLコードをクリップボードにコピーしました');
+            }).catch(err => {
+                console.error('コピーエラー:', err);
+                alert('コピーに失敗しました');
+            });
+        }
+        
+        // ブロックの展開/折りたたみ
+        function toggleBlock(header) {
+            const block = header.parentElement;
+            block.classList.toggle('expanded');
+        }
+        
+        // すべて展開
+        function expandAll() {
+            document.querySelectorAll('.process-block').forEach(block => {
+                block.classList.add('expanded');
+            });
+        }
+        
+        // すべて折りたたむ
+        function collapseAll() {
+            document.querySelectorAll('.process-block').forEach(block => {
+                block.classList.remove('expanded');
+            });
+        }
+        
+        // ？ボタンのトグル
+        function toggleQuestion(button) {
+            button.classList.toggle('active');
+        }
+        
+        // アクション追加
+        function addAction(button) {
+            const container = button.parentElement;
+            const newAction = createActionItem();
+            container.insertBefore(newAction, button);
+            
+            // アニメーション
+            newAction.style.opacity = '0';
+            setTimeout(() => {
+                newAction.style.transition = 'opacity 0.3s';
+                newAction.style.opacity = '1';
+            }, 10);
+        }
+        
+        // アクション項目作成
+        function createActionItem() {
+            const newAction = document.createElement('div');
+            newAction.className = 'action-item-inline';
+            newAction.innerHTML = `
+                <span class="drag-handle">☰</span>
+                <select class="actor-select-inline">
+                    <option>User</option>
+                    <option>System</option>
+                    <option>DB</option>
+                    <option>API</option>
+                </select>
+                <select class="arrow-type-inline">
+                    <option value="sync">→</option>
+                    <option value="async">⇢</option>
+                    <option value="return">⟵</option>
+                    <option value="async-return">⟸</option>
+                </select>
+                <select class="actor-select-inline">
+                    <option>User</option>
+                    <option>System</option>
+                    <option>DB</option>
+                    <option>API</option>
+                </select>
+                <input type="text" class="message-input-inline" placeholder="メッセージ" oninput="validateConditionInput(this)">
+                <div class="action-buttons-inline">
+                    <button class="btn-inline delete" title="削除" onclick="deleteAction(this)">🗑️</button>
+                    <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                    <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                </div>
+            `;
+            return newAction;
+        }
+        
+        // アクション削除
+        function deleteAction(button) {
+            const action = button.closest('.action-item-inline');
+            if (confirm('このアクションを削除しますか？')) {
+                action.style.transition = 'all 0.3s';
+                action.style.opacity = '0';
+                action.style.transform = 'translateX(-20px)';
+                setTimeout(() => action.remove(), 300);
+            }
+        }
+        
+        // 削除イベント（デリゲート）
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete')) {
+                deleteAction(e.target);
+            }
+        });
+        
+        // スレッド切り替え
+        function switchThread(tab, threadId) {
+            const container = tab.closest('.process-block-content');
+            
+            // タブのアクティブ状態切り替え
+            container.querySelectorAll('.thread-tab').forEach(t => {
+                t.classList.remove('active');
+            });
+            tab.classList.add('active');
+            
+            // コンテンツの表示切り替え
+            container.querySelectorAll('.thread-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            const targetContent = container.querySelector(`[data-thread-content="${threadId}"]`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        }
+        
+        // スレッド追加
+        function addThread() {
+            threadCount++;
+            const container = event.target.closest('.process-block-content');
+            const tabsContainer = container.querySelector('.thread-tabs');
+            const addButton = tabsContainer.querySelector('.thread-add-btn');
+            
+            // 新しいタブ作成
+            const newTab = document.createElement('button');
+            newTab.className = 'thread-tab';
+            newTab.dataset.thread = threadCount;
+            newTab.onclick = function() { switchThread(this, threadCount); };
+            newTab.innerHTML = `
+                🧵 スレッド${threadCount}
+                <span class="thread-tab-delete" onclick="deleteThread(event, ${threadCount})">×</span>
+            `;
+            
+            // 追加ボタンの前に挿入
+            tabsContainer.insertBefore(newTab, addButton);
+            
+            // 新しいコンテンツ作成
+            const newContent = document.createElement('div');
+            newContent.className = 'thread-content';
+            newContent.dataset.threadContent = threadCount;
+            newContent.innerHTML = `
+                <div class="branch-actions">
+                    <div class="action-item-inline">
+                        <span class="drag-handle">☰</span>
+                        <select class="actor-select-inline">
+                            <option>User</option>
+                            <option>System</option>
+                            <option>DB</option>
+                            <option>API</option>
+                        </select>
+                        <select class="arrow-type-inline">
+                            <option value="sync">→</option>
+                            <option value="async">⇢</option>
+                            <option value="return">⟵</option>
+                            <option value="async-return">⟸</option>
+                        </select>
+                        <select class="actor-select-inline">
+                            <option>User</option>
+                            <option>System</option>
+                            <option>DB</option>
+                            <option>API</option>
+                        </select>
+                        <input type="text" class="message-input-inline" placeholder="メッセージ" oninput="validateConditionInput(this)">
+                        <div class="action-buttons-inline">
+                            <button class="btn-inline delete" title="削除">🗑️</button>
+                            <button class="btn-inline question" title="条件確認" onclick="toggleQuestion(this)">？</button>
+                            <button class="btn-inline security" title="セキュリティチェック" onclick="checkActionSecurity(this)">🛡️</button>
+                        </div>
+                    </div>
+                    <button class="btn-add-action-inline" onclick="addAction(this)">
+                        <span>➕</span>
+                        <span>アクション追加</span>
+                    </button>
+                </div>
+            `;
+            container.appendChild(newContent);
+            
+            // 新しいタブをアクティブにする
+            switchThread(newTab, threadCount);
+        }
+        
+        // スレッド削除
+        function deleteThread(event, threadId) {
+            event.stopPropagation();
+            
+            const container = event.target.closest('.process-block-content');
+            const remainingTabs = container.querySelectorAll('.thread-tab').length;
+            
+            // 最低1つのスレッドは残す
+            if (remainingTabs <= 1) {
+                alert('最低1つのスレッドが必要です');
+                return;
+            }
+            
+            if (confirm(`スレッド${threadId}を削除しますか？`)) {
+                const tab = container.querySelector(`[data-thread="${threadId}"]`);
+                const content = container.querySelector(`[data-thread-content="${threadId}"]`);
+                
+                // アクティブなタブを削除する場合、別のタブをアクティブにする
+                if (tab.classList.contains('active')) {
+                    const nextTab = tab.nextElementSibling;
+                    const prevTab = tab.previousElementSibling;
+                    if (nextTab && !nextTab.classList.contains('thread-add-btn')) {
+                        switchThread(nextTab, nextTab.dataset.thread);
+                    } else if (prevTab) {
+                        switchThread(prevTab, prevTab.dataset.thread);
+                    }
+                }
+                
+                tab.remove();
+                content.remove();
+            }
+        }
+        
+        // PlantUML生成（改良版）
+        function generatePlantUML() {
+            try {
+                console.log('[App] PlantUMLコード生成開始');
+                
+                // すべてのアクション項目を収集
+                const actions = [];
+                document.querySelectorAll('.action-item-inline').forEach(item => {
+                    const fromActor = item.querySelector('.actor-select-inline:first-of-type').value;
+                    const toActor = item.querySelector('.actor-select-inline:last-of-type').value;
+                    const arrowType = item.querySelector('.arrow-type-inline').value;
+                    const message = item.querySelector('.message-input-inline').value || 'メッセージ';
+                    
+                    actions.push({
+                        from: fromActor,
+                        to: toActor,
+                        arrow: arrowType,
+                        message: message
+                    });
+                });
+                
+                // 条件分岐の収集
+                const conditions = [];
+                document.querySelectorAll('.process-condition-input').forEach(input => {
+                    if (input.value.trim()) {
+                        conditions.push(input.value.trim());
+                    }
+                });
+                
+                // PlantUMLコード生成
+                let plantUMLCode = '@startuml\n';
+                plantUMLCode += 'title PlantUML Editor - セキュリティ強化版\n\n';
+                
+                // アクター定義
+                const actors = new Set();
+                actions.forEach(action => {
+                    actors.add(action.from);
+                    actors.add(action.to);
+                });
+                
+                actors.forEach(actor => {
+                    if (actor === 'User') {
+                        plantUMLCode += `actor ${actor}\n`;
+                    } else if (actor === 'DB') {
+                        plantUMLCode += `database ${actor}\n`;
+                    } else {
+                        plantUMLCode += `participant ${actor}\n`;
+                    }
+                });
+                
+                plantUMLCode += '\nnote over System : セキュリティ監視有効\n\n';
+                
+                // アクションの出力
+                actions.forEach(action => {
+                    let arrow = '->';
+                    switch (action.arrow) {
+                        case 'async':
+                            arrow = '->>';
+                            break;
+                        case 'return':
+                            arrow = '<--';
+                            break;
+                        case 'async-return':
+                            arrow = '<<--';
+                            break;
+                    }
+                    
+                    plantUMLCode += `${action.from} ${arrow} ${action.to} : ${action.message}\n`;
+                    
+                    // セキュリティ関連のメッセージにはノートを追加
+                    if (action.message.includes('認証') || action.message.includes('ログイン')) {
+                        plantUMLCode += 'note right : セキュリティ検証実施\n';
+                    }
+                });
+                
+                plantUMLCode += '\n@enduml';
+                
+                // コードエディターに反映
+                document.getElementById('plantuml-code').textContent = plantUMLCode;
+                
+                // セキュリティ検証
+                if (validationEngine) {
+                    const validation = validationEngine.validateInput(plantUMLCode);
+                    if (validation.isValid) {
+                        alert('✅ PlantUMLコード生成完了\nセキュリティ検証: 合格');
+                    } else {
+                        alert('⚠️ PlantUMLコード生成完了\nセキュリティ警告あり');
+                    }
+                } else {
+                    alert('PlantUMLコード生成完了');
+                }
+                
+            } catch (error) {
+                console.error('[App] PlantUML生成エラー:', error);
+                alert('PlantUMLコード生成中にエラーが発生しました');
+            }
+        }
+        
+        // エラーハンドリング
+        window.addEventListener('error', function(event) {
+            console.error('[App] JavaScript Error:', event.error);
+            if (securityMonitor) {
+                securityMonitor.analyzeEvent({
+                    type: 'javascript_error',
+                    message: event.message,
+                    filename: event.filename,
+                    lineno: event.lineno
+                });
+            }
+            updateSecurityStatus('warning');
+        });
+        
+        // 未処理のPromise拒否
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('[App] Unhandled Promise Rejection:', event.reason);
+            if (securityMonitor) {
+                securityMonitor.analyzeEvent({
+                    type: 'unhandled_promise_rejection',
+                    reason: event.reason
+                });
+            }
+        });
+        
+        console.log('[App] PlantUML Editor セキュリティ強化版 読み込み完了');
+    </script>
+</body>
+</html>

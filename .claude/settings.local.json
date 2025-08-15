@@ -99,7 +99,8 @@
     "additionalDirectories": [
       "C:\\c\\d\\PlantUML",
       "C:\\mnt\\c\\d\\PlantUML",
-      "C:\\mnt\\c\\d"
+      "C:\\mnt\\c\\d",
+      "C:\\"
     ]
   }
 }
