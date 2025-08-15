@@ -92,7 +92,9 @@
       "Bash(npm:*)",
       "Bash(cat:*)",
       "mcp__github__search_repositories",
-      "mcp__fetch__fetch_url"
+      "mcp__fetch__fetch_url",
+      "WebSearch",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
@@ -100,7 +102,8 @@
       "C:\\c\\d\\PlantUML",
       "C:\\mnt\\c\\d\\PlantUML",
       "C:\\mnt\\c\\d",
-      "C:\\"
+      "C:\\",
+      "C:\\Users\\保科　慶光\\.claude"
     ]
   }
 }

@@ -7,12 +7,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 詳細は外部ファイル参照で管理
 - 重要な原則と要点のみ記載
 
-## ⚠️ 最重要：必ず守るべき6原則
+## ⚠️ 最重要：必ず守るべき7原則
 
-### 🔴 原則1: TodoWriteの積極的な使用
+### 🔴 原則1: 設計書テンプレートの準拠
+**すべての設計・開発作業は `.claude\個人\統合型設計書テンプレート_完全版.md` に準拠**
+- 新規開発：初期開発モード使用
+- 機能追加：追加開発モード使用  
+- バグ修正：緊急修正モード使用
+- 設計書作成時は必ず100点達成まで品質改善
+
+### 🔴 原則2: TodoWriteの積極的な使用
 3ステップ以上の作業は必ずTodoWriteで管理
 
-### 🔴 原則2: カスタムエージェントの積極的な使用  
+### 🔴 原則3: カスタムエージェントの積極的な使用  
 下記の例を参考にTask toolからカスタムエージェントを呼び出してください
 
 #### 🆕 自律的エージェント委譲機能
@@ -128,19 +135,25 @@ await Task({
 2. **エージェントの専門性はプロンプトで定義**
 3. **エージェント定義ファイルの内容をプロンプトに含める**
 
-### 🔴 原則3: ソース版管理（Git/GitHub）の毎回実施
+### 🔴 原則4: ソース版管理（Git/GitHub）の毎回実施
 コード修正完了時は即時にGitへコミット、可能ならpush→PR作成まで実施
 
-### 🔴 原則4: MCPサーバーの積極的な使用
+### 🔴 原則5: MCPサーバーの積極的な使用
 外部連携が可能な場合は必ずMCPを活用
 
-### 🔴 原則5: ClaudeCodeActionsの積極的な使用
+### 🔴 原則6: ClaudeCodeActionsの積極的な使用
 Git操作、PR作成、コードレビューはClaudeCodeActionsで実行
 
-### 🔴 原則6: Git Worktreesの積極的な使用
+### 🔴 原則7: Git Worktreesの積極的な使用
 並行開発、機能ブランチ管理は必ずGit Worktreesで実行
 
 ## 📚 詳細ドキュメント参照
+
+### 設計書テンプレート（最優先）
+- **統合型設計書テンプレート**: `.claude/個人/統合型設計書テンプレート_完全版.md` ★必須
+- **AI駆動開発用**: `.claude/個人/AI駆動開発用_機能追加テンプレート.md`
+- **実践的設計書**: `.claude/個人/実践的設計書テンプレート.md`
+- **シンプル版**: `.claude/個人/設計書テンプレート_シンプル版.md`
 
 ### コア機能ガイド
 - **TodoWrite詳細**: `.claude/todowrite.md`
@@ -162,29 +175,40 @@ Git操作、PR作成、コードレビューはClaudeCodeActionsで実行
 
 ## 🚀 開発作業の基本フロー
 
-### 1. 環境準備
+### 1. 設計書作成（最初に必須）
+```
+# 新規開発の場合
+「統合型設計書テンプレートで[アプリ名]の設計書を作成してください」
+
+# 機能追加の場合
+「統合型設計書テンプレートの追加開発モードで[機能名]の設計書を作成してください」
+
+# 設計書は100点達成まで改善
+```
+
+### 2. 環境準備
 ```bash
 git worktree add ../PlantUML-feature-[機能名] feature/[機能名]
 cd ../PlantUML-feature-[機能名]
 ```
 
-### 2. タスク管理
+### 3. タスク管理
 3ステップ以上の作業は必ずTodoWriteで管理：
 - pending → in_progress → completed
 - 同時にin_progressは1つのみ
 - 完了時は即座に更新
 
-### 3. 実装
-複雑な作業はカスタムエージェントに自動委譲：
+### 4. 実装
+設計書に基づいて実装（カスタムエージェント活用）：
 - カスタムエージェント: 特定領域のタスク
 - 詳細は `.claude/agents/` 参照
 
-### 4. 品質保証
+### 5. 品質保証
 - MCP活用: Playwright、GitHub、Context7
 - ClaudeCodeActions: 自動レビュー
 - テスト実行: 必須
 
-### 5. ソース版管理（Git）
+### 6. ソース版管理（Git）
 ```bash
 git add . && git commit -m "type(scope): subject"
 git push
@@ -198,16 +222,18 @@ git push
 
 ## 🤖 利用可能なカスタムエージェント（概要）
 
+**重要**: 設計関連エージェントは全て `.claude/個人/統合型設計書テンプレート_完全版.md` に準拠
+
 | エージェント | 用途 | 詳細 |
 |------------|------|------|
-| main-orchestrator | メインワークフロー統括 | 複雑な処理の全体調整（opus, Task tool保有） |
-| agent-orchestrator | エージェント間調整 | 自律的な複数エージェント委譲（opus, Task tool保有） |
-| ai-driven-app-architect | システム設計 | アーキテクチャ専門 |
+| main-orchestrator | メインワークフロー統括 | 複雑な処理の全体調整、**設計書準拠を管理**（opus, Task tool保有） |
+| agent-orchestrator | エージェント間調整 | 自律的な複数エージェント委譲、**Part B協調パターン活用**（opus, Task tool保有） |
+| ai-driven-app-architect | システム設計 | アーキテクチャ専門、**設計書テンプレート必須使用**（Task tool保有） |
 | webapp-test-automation | テスト自動化 | 品質保証専門（Task tool保有） |
 | web-app-coder | Webアプリ実装 | 新規機能実装・UIコンポーネント開発専門（Task tool保有） |
-| web-debug-specialist | フロントエンド | デバッグ・最適化専門 |
-| software-doc-writer | 技術文書 | ドキュメント専門 |
-| dev-ticket-manager | プロジェクト管理 | タスク管理専門 |
+| web-debug-specialist | フロントエンド | デバッグ・最適化専門（Task tool保有） |
+| software-doc-writer | 技術文書 | ドキュメント専門、**設計書100点品質達成** |
+| dev-ticket-manager | プロジェクト管理 | タスク管理専門（Task tool保有） |
 | docker-dev-env-builder | 環境構築 | Docker専門 |
 | mcp-server-setup-expert | MCP統合 | MCP設定専門 |
 | claude-code-config-expert | Claude Code設定 | 環境設定専門 |
@@ -217,6 +243,7 @@ git push
 | debugger | デバッグ | エラー解析・修正専門（Task tool保有, Phase1実装済） |
 
 詳細仕様は `.claude/agents/` 参照
+**設計書準拠**: 各エージェントは設計書テンプレートの適切なモード（初期開発/追加開発）を自動選択
 
 ## 🔧 MCP活用（概要）
 
