@@ -132,11 +132,28 @@ class ActorMasterMaintenanceUI {
     addStyles() {
         const style = document.createElement('style');
         style.textContent = `
+            #actor-master-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            }
+            
             #actor-master-modal .large-modal {
                 width: 90%;
                 max-width: 1200px;
                 height: 80vh;
                 max-height: 800px;
+                background: white;
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column;
             }
             
             #actor-master-modal .modal-body {

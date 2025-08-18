@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>アクターマスタメンテナンスUIテスト</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="modal-styles.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .test-controls {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #1976D2;
+        }
+        .status-output {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>アクターマスタメンテナンスUI テストページ</h1>
+    
+    <div class="test-controls">
+        <h2>テストコントロール</h2>
+        <button class="test-button" id="test-show-modal">マスタメンテナンスUIを表示</button>
+        <button class="test-button" id="test-add-actor">テストアクター追加</button>
+        <button class="test-button" id="test-export">マスタデータエクスポート</button>
+        <button class="test-button" id="test-check-status">ステータス確認</button>
+    </div>
+    
+    <div class="status-output" id="status-output">
+        準備完了...
+    </div>
+
+    <!-- Scripts -->
+    <script src="SafeDOMManager.js"></script>
+    <script src="ActorMasterManager.js"></script>
+    <script src="ActorMasterMaintenanceUI.js"></script>
+    
+    <script>
+        // テスト用の初期化
+        let actorMasterManager = null;
+        let actorMasterMaintenanceUI = null;
+        
+        window.addEventListener('DOMContentLoaded', async () => {
+            const output = document.getElementById('status-output');
+            
+            try {
+                // ActorMasterManagerの初期化
+                actorMasterManager = new ActorMasterManager();
+                await actorMasterManager.loadMasterData();
+                output.textContent += '\n✅ ActorMasterManager 初期化完了';
+                
+                // ActorMasterMaintenanceUIの初期化
+                actorMasterMaintenanceUI = new ActorMasterMaintenanceUI(actorMasterManager);
+                output.textContent += '\n✅ ActorMasterMaintenanceUI 初期化完了';
+                
+                // 現在のアクター数を表示
+                const actors = actorMasterManager.getAllActors();
+                output.textContent += `\n📊 ロードされたアクター数: ${actors.length}`;
+                
+                // カテゴリー情報
+                const categories = actorMasterManager.categoriesMap;
+                output.textContent += `\n📁 カテゴリー数: ${categories.size}`;
+                
+            } catch (error) {
+                output.textContent += `\n❌ エラー: ${error.message}`;
+                console.error('Initialization error:', error);
+            }
+        });
+        
+        // マスタメンテナンスUIを表示
+        document.getElementById('test-show-modal').addEventListener('click', () => {
+            if (actorMasterMaintenanceUI) {
+                actorMasterMaintenanceUI.show();
+                document.getElementById('status-output').textContent += '\n🔵 マスタメンテナンスUIを表示しました';
+            } else {
+                document.getElementById('status-output').textContent += '\n❌ UIが初期化されていません';
+            }
+        });
+        
+        // テストアクター追加
+        document.getElementById('test-add-actor').addEventListener('click', () => {
+            if (actorMasterManager) {
+                const testActor = {
+                    name: 'テストアクター' + Date.now(),
+                    icon: '🧪',
+                    categoryId: 'business',
+                    description: 'テスト用のアクター',
+                    color: '#FF5722'
+                };
+                actorMasterManager.addCustomActor(testActor);
+                document.getElementById('status-output').textContent += `\n➕ テストアクター追加: ${testActor.name}`;
+            }
+        });
+        
+        // エクスポート
+        document.getElementById('test-export').addEventListener('click', () => {
+            if (actorMasterManager) {
+                const data = {
+                    ...actorMasterManager.masterData,
+                    customActors: actorMasterManager.exportCustomActors(),
+                    exportDate: new Date().toISOString()
+                };
+                const json = JSON.stringify(data, null, 2);
+                document.getElementById('status-output').textContent += `\n📥 エクスポートデータ (${json.length} bytes)`;
+            }
+        });
+        
+        // ステータス確認
+        document.getElementById('test-check-status').addEventListener('click', () => {
+            if (actorMasterManager) {
+                const actors = actorMasterManager.getAllActors();
+                const categories = actorMasterManager.categoriesMap;
+                const defaultActors = actorMasterManager.getDefaultActors();
+                
+                let status = '\n=== ステータス確認 ===';
+                status += `\n総アクター数: ${actors.length}`;
+                status += `\nカテゴリー数: ${categories.size}`;
+                status += `\nデフォルトアクター数: ${defaultActors.length}`;
+                status += '\n\nカテゴリー別アクター数:';
+                
+                categories.forEach((cat, id) => {
+                    const catActors = actorMasterManager.getActorsByCategory(id);
+                    status += `\n  ${cat.name}: ${catActors.length}`;
+                });
+                
+                document.getElementById('status-output').textContent += status;
+            }
+        });
+    </script>
+</body>
+</html>
