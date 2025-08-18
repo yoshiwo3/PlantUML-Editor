@@ -45,6 +45,9 @@ class PlantUMLEditor {
         this.stateManager = null;
         this.useModularParser = false;
         
+        // アクターマスタ管理
+        this.actorMasterManager = null;
+        
         // Phase 3: 高度な双方向同期システム
         this.realtimeSyncManager = null;
         this.diffCalculator = null;
@@ -94,6 +97,9 @@ class PlantUMLEditor {
         // Phase 2改善版: モジュール化されたパーサーと状態管理の初期化
         this.initializeModularComponents();
         
+        // アクターマスタ管理の初期化
+        await this.initializeActorMaster();
+        
         // Phase 3モジュールの読み込み
         // フリーズ問題のため一時的に無効化 - 2025-08-13
         console.warn('[PlantUMLEditor] Phase 3システムの初期化を一時的にスキップ（フリーズ問題対応）');
@@ -104,6 +110,59 @@ class PlantUMLEditor {
         this.setupPanelResize();
         this.updatePlantUML();
         this.updateLineNumbers();
+    }
+    
+    /**
+     * アクターマスタ管理の初期化
+     */
+    async initializeActorMaster() {
+        try {
+            if (typeof ActorMasterManager !== 'undefined') {
+                this.actorMasterManager = new ActorMasterManager();
+                
+                // マスタデータの読み込み
+                const loaded = await this.actorMasterManager.loadMasterData();
+                
+                if (loaded) {
+                    console.log('[PlantUMLEditor] ActorMasterManagerを初期化しました');
+                    
+                    // アクターグリッドを動的に生成
+                    this.generateActorGrid();
+                } else {
+                    console.warn('[PlantUMLEditor] マスタデータの読み込みに失敗、フォールバックを使用');
+                    this.generateActorGrid();
+                }
+            } else {
+                console.warn('[PlantUMLEditor] ActorMasterManagerが利用できません');
+            }
+        } catch (error) {
+            console.error('[PlantUMLEditor] ActorMasterManagerの初期化エラー:', error);
+        }
+    }
+    
+    /**
+     * アクターグリッドの動的生成
+     */
+    generateActorGrid() {
+        const grid = document.querySelector('.actor-grid');
+        if (!grid || !this.actorMasterManager) return;
+        
+        // 既存のボタンをクリア（追加・削除ボタンは残す）
+        const existingButtons = grid.querySelectorAll('.actor-btn');
+        existingButtons.forEach(btn => btn.remove());
+        
+        // マスタからアクターボタンを生成
+        const html = this.actorMasterManager.generateActorGridHTML();
+        grid.innerHTML = html;
+        
+        // イベントリスナーを再設定
+        grid.querySelectorAll('.actor-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.toggleActor(btn.dataset.actor, btn);
+            });
+        });
+        
+        console.log('[PlantUMLEditor] アクターグリッドを生成しました');
     }
     
     /**
