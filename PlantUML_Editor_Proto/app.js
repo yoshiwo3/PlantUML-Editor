@@ -3536,27 +3536,42 @@ class PlantUMLEditor {
         const plantUmlCode = plantUmlTextarea ? plantUmlTextarea.value : '';
         
         if (plantUmlCode && plantUmlCode.trim() !== '' && plantUmlCode.trim() !== '@startuml\n@enduml') {
-            // PlantUMLコードをdraw.ioで開く（PlantUMLプラグイン経由）
+            // PlantUMLコードをdraw.ioで開く（XML埋め込み方式）
             try {
-                // PlantUML Encoderライブラリを使用してエンコード
-                let encoded;
-                if (typeof plantumlEncoder !== 'undefined') {
-                    // plantuml-encoderライブラリが利用可能な場合
-                    encoded = plantumlEncoder.encode(plantUmlCode);
-                } else {
-                    // フォールバック：手動でエンコード
-                    const compressed = pako.deflate(plantUmlCode, { to: 'string' });
-                    encoded = btoa(compressed)
-                        .replace(/\+/g, '-')
-                        .replace(/\//g, '_');
-                }
+                // draw.io XMLフォーマットでPlantUMLを埋め込む
+                const timestamp = new Date().toISOString();
                 
-                // draw.ioのPlantUML機能を使用
-                // draw.ioはPlantUMLサーバーからSVGを読み込み可能
-                const plantUmlServerUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+                // XMLエスケープ処理
+                const escapedPlantUml = plantUmlCode
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&apos;');
                 
-                // draw.ioでインポート（#Uはdata URL、#Rはremote URL）
-                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark&title=PlantUML%20Diagram.drawio#U${encodeURIComponent(plantUmlServerUrl)}`;
+                // draw.io XMLドキュメントを作成
+                const drawioXml = `<mxfile host="app.diagrams.net" modified="${timestamp}" agent="PlantUML-Editor" version="21.6.5" type="device">
+  <diagram name="PlantUML Diagram" id="plantuml-${Date.now()}">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="${escapedPlantUml}" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontFamily=Courier New;fontSize=11;spacing=2;spacingTop=6;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="700" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="PlantUML Code (draw.io内でEdit → Edit Data でPlantUMLプラグインを使用できます)" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="700" height="25" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+                
+                // XMLをBase64エンコード
+                const encodedXml = btoa(unescape(encodeURIComponent(drawioXml)));
+                
+                // draw.ioを開く（#RパラメータでXMLをインポート）
+                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark&title=PlantUML%20Diagram.drawio#R${encodedXml}`;
                 
                 // 新しいタブで開く
                 window.open(drawioUrl, '_blank');
