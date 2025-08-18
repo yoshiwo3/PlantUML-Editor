@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" 
+        modified="2025-08-18T13:35:16.056Z" 
+        agent="PlantUML-Editor-Proto" 
+        etag="3g9a8cc7qum" 
+        version="24.7.8" 
+        type="device">
+  <diagram id="diagram_1755524116056" name="Sequence Diagram">
+    <mxGraphModel dx="1422" dy="762" 
+                  grid="1" gridSize="10" 
+                  guides="1" tooltips="1" 
+                  connect="1" arrows="1" 
+                  fold="1" page="1" 
+                  pageScale="1" 
+                  pageWidth="827" 
+                  pageHeight="1169" 
+                  math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="actor_2" value="顧客" 
+                style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" 
+                vertex="1" parent="1">
+          <mxGeometry x="100" y="30" width="30" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_3" value="ECサイト" 
+                style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" 
+                vertex="1" parent="1">
+          <mxGeometry x="250" y="30" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_5" value="" 
+                style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};dashed=1;dashPattern=8 8;" 
+                vertex="1" parent="1">
+          <mxGeometry x="115" y="90" width="10" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="lifeline_6" value="" 
+                style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;elbow&quot;:&quot;vertical&quot;,&quot;curved&quot;:0,&quot;rounded&quot;:0};dashed=1;dashPattern=8 8;" 
+                vertex="1" parent="1">
+          <mxGeometry x="265" y="90" width="10" height="400" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_4" value="商品を注文する" 
+                style="html=1;verticalAlign=bottom;labelBackgroundColor=default;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;" 
+                edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="100" as="sourcePoint" />
+            <mxPoint x="270" y="100" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="120" y="100" />
+              <mxPoint x="270" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

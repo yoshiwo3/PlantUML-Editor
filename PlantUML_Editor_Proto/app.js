@@ -47,6 +47,7 @@ class PlantUMLEditor {
         
         // アクターマスタ管理
         this.actorMasterManager = null;
+        this.actorMasterMaintenanceUI = null;
         
         // Phase 3: 高度な双方向同期システム
         this.realtimeSyncManager = null;
@@ -128,6 +129,12 @@ class PlantUMLEditor {
                     
                     // アクターグリッドを動的に生成
                     this.generateActorGrid();
+                    
+                    // メンテナンスUIを初期化
+                    if (typeof ActorMasterMaintenanceUI !== 'undefined') {
+                        this.actorMasterMaintenanceUI = new ActorMasterMaintenanceUI(this.actorMasterManager);
+                        console.log('[PlantUMLEditor] ActorMasterMaintenanceUIを初期化しました');
+                    }
                 } else {
                     console.warn('[PlantUMLEditor] マスタデータの読み込みに失敗、フォールバックを使用');
                     this.generateActorGrid();
@@ -376,10 +383,11 @@ class PlantUMLEditor {
         const settingsBtn = document.querySelector('.btn-settings');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => {
-                const modal = document.getElementById('phase3-settings-modal');
-                if (modal) {
-                    modal.style.display = 'flex';
-                    this.updateSyncStatus();
+                // アクターマスタメンテナンスUIを表示
+                if (this.actorMasterMaintenanceUI) {
+                    this.actorMasterMaintenanceUI.show();
+                } else {
+                    console.warn('[PlantUMLApp] ActorMasterMaintenanceUI is not initialized');
                 }
             });
         }
@@ -3523,25 +3531,82 @@ class PlantUMLEditor {
 
     // draw.io エクスポート機能
     exportToDrawIO() {
-        const actors = Array.from(this.selectedActors);
-        const actions = this.actions;
+        // PlantUMLコードを取得
+        const plantUmlTextarea = document.getElementById('plantuml-code');
+        const plantUmlCode = plantUmlTextarea ? plantUmlTextarea.value : '';
         
-        if (actors.length === 0 || actions.length === 0) {
-            this.showStatus('エクスポートする内容がありません', 'warning');
-            return;
-        }
-        
-        try {
-            const converter = new SequenceDiagramToDrawIO();
-            converter.initialize(actors, actions);
-            const url = converter.generateDrawIOUrl();
+        if (plantUmlCode && plantUmlCode.trim() !== '' && plantUmlCode.trim() !== '@startuml\n@enduml') {
+            // PlantUMLコードをdraw.ioで開く（PlantUMLプラグイン経由）
+            try {
+                // PlantUML Encoderライブラリを使用してエンコード
+                let encoded;
+                if (typeof plantumlEncoder !== 'undefined') {
+                    // plantuml-encoderライブラリが利用可能な場合
+                    encoded = plantumlEncoder.encode(plantUmlCode);
+                } else {
+                    // フォールバック：手動でエンコード
+                    const compressed = pako.deflate(plantUmlCode, { to: 'string' });
+                    encoded = btoa(compressed)
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_');
+                }
+                
+                // draw.ioのPlantUML機能を使用
+                // draw.ioはPlantUMLサーバーからSVGを読み込み可能
+                const plantUmlServerUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+                
+                // draw.ioでインポート（#Uはdata URL、#Rはremote URL）
+                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark&title=PlantUML%20Diagram.drawio#U${encodeURIComponent(plantUmlServerUrl)}`;
+                
+                // 新しいタブで開く
+                window.open(drawioUrl, '_blank');
+                this.showStatus('draw.ioでPlantUMLダイアグラムを開きました');
+            } catch (error) {
+                console.error('draw.ioエクスポートエラー:', error);
+                // Pakoが利用できない場合は、シンプルな方法を試す
+                try {
+                    // PlantUMLコードをBase64エンコード（非圧縮）
+                    const encoded = btoa(unescape(encodeURIComponent(plantUmlCode)));
+                    
+                    // draw.ioを開いて、手動でPlantUMLコードをインポートする案内
+                    const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark`;
+                    
+                    // PlantUMLコードをクリップボードにコピー
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(plantUmlCode).then(() => {
+                            this.showStatus('PlantUMLコードをコピーしました。draw.ioで「Arrange > Insert > Advanced > PlantUML」からペーストしてください', 'info');
+                        });
+                    }
+                    
+                    // 新しいタブで開く
+                    window.open(drawioUrl, '_blank');
+                } catch (fallbackError) {
+                    console.error('フォールバックエラー:', fallbackError);
+                    this.showStatus('エクスポートに失敗しました', 'error');
+                }
+            }
+        } else {
+            // PlantUMLコードがない場合は、アクター+処理モードのデータを使用
+            const actors = Array.from(this.selectedActors);
+            const actions = this.actions;
             
-            // 新しいタブで開く
-            window.open(url, '_blank');
-            this.showStatus('draw.ioで開きました');
-        } catch (error) {
-            console.error('draw.ioエクスポートエラー:', error);
-            this.showStatus('エクスポートに失敗しました', 'error');
+            if (actors.length === 0 || actions.length === 0) {
+                this.showStatus('エクスポートする内容がありません', 'warning');
+                return;
+            }
+            
+            try {
+                const converter = new SequenceDiagramToDrawIO();
+                converter.initialize(actors, actions);
+                const url = converter.generateDrawIOUrl();
+                
+                // 新しいタブで開く
+                window.open(url, '_blank');
+                this.showStatus('draw.ioで開きました');
+            } catch (error) {
+                console.error('draw.ioエクスポートエラー:', error);
+                this.showStatus('エクスポートに失敗しました', 'error');
+            }
         }
     }
 
