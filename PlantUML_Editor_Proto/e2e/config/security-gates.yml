@@ -1,0 +1,432 @@
+# CI/CD Security Gates Configuration
+# PlantUML Editor Proto - Sprint2 Security Implementation
+
+name: "PlantUML Editor Security Gates"
+version: "2.0.0"
+created: "2025-08-17"
+
+# Global Configuration
+global:
+  timeout: 1800 # 30 minutes
+  parallel_execution: true
+  fail_fast: false
+  retry_attempts: 2
+  
+# Security Gate Definitions
+security_gates:
+  
+  # Gate 1: Injection Attack Defense
+  injection_defense:
+    name: "Injection Attack Defense Validation"
+    description: "Validates defense against SQL, Command, LDAP, XML, and Template injection attacks"
+    test_files:
+      - "tests/security/TEST-E2E-024-injection-attack-defense.spec.js"
+    thresholds:
+      success_rate: 98
+      coverage: 95
+      block_rate: 97
+    severity: "critical"
+    timeout: 300
+    retry_on_failure: true
+    
+    validation_criteria:
+      sql_injection_defense: 
+        min_block_rate: 100
+        test_patterns: 50
+      command_injection_defense:
+        min_block_rate: 100
+        test_patterns: 30
+      ldap_injection_defense:
+        min_block_rate: 95
+        test_patterns: 20
+      xml_injection_defense:
+        min_block_rate: 98
+        test_patterns: 25
+      template_injection_defense:
+        min_block_rate: 100
+        test_patterns: 15
+      path_traversal_defense:
+        min_block_rate: 100
+        test_patterns: 12
+        
+    japanese_specific:
+      fullwidth_character_injection: true
+      unicode_normalization_attack: true
+      encoding_attack_variants: true
+
+  # Gate 2: XSS Defense Validation
+  xss_defense:
+    name: "Cross-Site Scripting Defense"
+    description: "Comprehensive XSS prevention including Reflected, Stored, and DOM-based XSS"
+    test_files:
+      - "tests/security/TEST-E2E-025-xss-defense.spec.js"
+    thresholds:
+      success_rate: 99
+      coverage: 96
+      block_rate: 98
+    severity: "critical"
+    timeout: 360
+    
+    validation_criteria:
+      reflected_xss_defense:
+        min_block_rate: 100
+        test_patterns: 45
+      stored_xss_defense:
+        min_block_rate: 100
+        test_patterns: 35
+      dom_based_xss_defense:
+        min_block_rate: 98
+        test_patterns: 25
+      csp_implementation:
+        policy_validation: true
+        nonce_generation: true
+        violation_reporting: true
+      input_sanitization:
+        context_aware: true
+        deep_sanitization: true
+        performance_threshold: 10 # ms
+      output_encoding:
+        html_context: true
+        javascript_context: true
+        url_context: true
+        css_context: true
+
+  # Gate 3: CSRF Protection
+  csrf_protection:
+    name: "Cross-Site Request Forgery Protection"
+    description: "CSRF token validation, SameSite cookies, and request validation"
+    test_files:
+      - "tests/security/TEST-E2E-026-csrf-protection.spec.js"
+    thresholds:
+      success_rate: 95
+      coverage: 90
+      block_rate: 100
+    severity: "high"
+    timeout: 240
+    
+    validation_criteria:
+      csrf_token_validation:
+        token_generation: true
+        token_validation: true
+        token_expiry: true
+        token_refresh: true
+      samesite_cookies:
+        strict_enforcement: true
+        secure_flag: true
+        httponly_flag: true
+      referer_validation:
+        header_checking: true
+        origin_validation: true
+      double_submit_cookie:
+        implementation: true
+        rotation: true
+      custom_headers:
+        required_headers: ["X-Requested-With"]
+        validation: true
+
+  # Gate 4: Input Validation Security
+  input_validation:
+    name: "Input Validation Security"
+    description: "Comprehensive input validation including length, encoding, and file upload security"
+    test_files:
+      - "tests/security/TEST-E2E-027-input-validation-security.spec.js"
+    thresholds:
+      success_rate: 92
+      coverage: 88
+      validation_coverage: 95
+    severity: "high"
+    timeout: 300
+    
+    validation_criteria:
+      length_validation:
+        field_specific_limits: true
+        byte_length_checking: true
+        japanese_character_support: true
+      encoding_validation:
+        utf8_compliance: true
+        dangerous_character_detection: true
+        normalization_attack_prevention: true
+      file_upload_security:
+        mime_type_validation: true
+        file_header_verification: true
+        virus_scanning: true
+        size_limitations: true
+        content_analysis: true
+      sanitization_performance:
+        max_processing_time: 100 # ms per validation
+        memory_usage_limit: 100 # MB
+
+  # Gate 5: Authentication & Authorization
+  auth_security:
+    name: "Authentication & Authorization Security"
+    description: "Login security, session management, JWT validation, and RBAC"
+    test_files:
+      - "tests/security/TEST-E2E-028-authentication-authorization.spec.js"
+    thresholds:
+      success_rate: 95
+      coverage: 92
+      security_score: 85
+    severity: "critical"
+    timeout: 420
+    
+    validation_criteria:
+      authentication_flow:
+        brute_force_protection: true
+        password_policy_enforcement: true
+        mfa_implementation: true
+        account_lockout: true
+      session_management:
+        session_fixation_prevention: true
+        session_hijacking_protection: true
+        timeout_management: true
+        concurrent_session_limits: true
+      jwt_security:
+        secure_algorithms: ["HS256", "RS256", "ES256"]
+        token_expiry: true
+        signature_validation: true
+        blacklist_support: true
+      role_based_access:
+        permission_checking: true
+        resource_level_control: true
+        privilege_escalation_prevention: true
+        audit_logging: true
+      password_security:
+        strength_requirements: true
+        history_prevention: true
+        secure_storage: true
+        reset_security: true
+
+  # Gate 6: Integration Security
+  integration_security:
+    name: "Integration Security Validation"
+    description: "Security validation for editor communication, state management, and API integration"
+    test_files:
+      - "tests/integration/TEST-E2E-019-editor-communication.spec.js"
+      - "tests/integration/TEST-E2E-020-state-management.spec.js"
+      - "tests/integration/TEST-E2E-021-modal-interaction.spec.js"
+      - "tests/integration/TEST-E2E-022-error-recovery.spec.js"
+      - "tests/integration/TEST-E2E-023-api-integration.spec.js"
+    thresholds:
+      success_rate: 90
+      coverage: 85
+      security_compliance: 88
+    severity: "medium"
+    timeout: 600
+    
+    validation_criteria:
+      data_flow_security:
+        inter_component_validation: true
+        state_integrity_checking: true
+        unauthorized_access_prevention: true
+      error_handling_security:
+        information_leakage_prevention: true
+        graceful_degradation: true
+        security_logging: true
+      api_security:
+        rate_limiting: true
+        authentication_enforcement: true
+        input_validation: true
+        output_sanitization: true
+
+# Execution Configuration
+execution:
+  # Sequential execution order for security gates
+  execution_order:
+    - "injection_defense"
+    - "xss_defense" 
+    - "csrf_protection"
+    - "input_validation"
+    - "auth_security"
+    - "integration_security"
+    
+  # Parallel execution groups (gates that can run simultaneously)
+  parallel_groups:
+    security_core:
+      - "injection_defense"
+      - "xss_defense"
+    validation_and_auth:
+      - "input_validation"
+      - "auth_security"
+    integration_final:
+      - "integration_security"
+      
+  # Conditional execution
+  conditional_gates:
+    # Only run if previous gates pass
+    integration_security:
+      depends_on: ["injection_defense", "xss_defense", "csrf_protection"]
+      condition: "all_passed"
+
+# Reporting Configuration
+reporting:
+  formats: ["json", "html", "junit"]
+  output_directory: "reports/security-gates"
+  include_details: true
+  generate_summary: true
+  
+  # Report sections
+  sections:
+    - "executive_summary"
+    - "gate_results"
+    - "security_metrics"
+    - "vulnerability_assessment"
+    - "recommendations"
+    - "compliance_status"
+    
+  # Metrics to track
+  metrics:
+    - "overall_security_score"
+    - "vulnerability_count_by_severity"
+    - "test_coverage_percentage"
+    - "execution_time_by_gate"
+    - "success_rate_by_category"
+
+# Failure Handling
+failure_handling:
+  # Actions on gate failure
+  on_failure:
+    critical_gates:
+      action: "stop_pipeline"
+      notification: "immediate"
+      escalation: "security_team"
+    high_severity:
+      action: "continue_with_warning"
+      notification: "within_1_hour"
+      escalation: "dev_team"
+    medium_severity:
+      action: "continue"
+      notification: "daily_digest"
+      
+  # Retry configuration
+  retry_policy:
+    max_attempts: 3
+    backoff_strategy: "exponential"
+    retry_on:
+      - "infrastructure_failure"
+      - "timeout"
+      - "flaky_test"
+    never_retry_on:
+      - "security_violation"
+      - "authentication_failure"
+
+# Compliance and Auditing
+compliance:
+  standards:
+    - "OWASP_TOP_10_2021"
+    - "CWE_TOP_25"
+    - "SANS_TOP_25"
+    - "ISO_27001"
+    
+  audit_trail:
+    enabled: true
+    retention_days: 365
+    include_test_data: false
+    include_sensitive_data: false
+    
+  compliance_thresholds:
+    owasp_top_10_coverage: 95
+    cwe_top_25_coverage: 90
+    overall_compliance_score: 85
+
+# Environment-specific Configuration
+environments:
+  development:
+    enabled_gates: ["injection_defense", "xss_defense"]
+    relaxed_thresholds: true
+    detailed_logging: true
+    
+  staging:
+    enabled_gates: "all"
+    standard_thresholds: true
+    performance_monitoring: true
+    
+  production:
+    enabled_gates: "all"
+    strict_thresholds: true
+    security_hardening: true
+    audit_logging: true
+
+# Integration with CI/CD Tools
+integrations:
+  github_actions:
+    enabled: true
+    status_checks: true
+    pr_comments: true
+    
+  jenkins:
+    enabled: false
+    build_breaker: true
+    
+  gitlab_ci:
+    enabled: false
+    merge_request_integration: true
+    
+  azure_devops:
+    enabled: false
+    work_item_integration: true
+
+# Custom Security Rules
+custom_rules:
+  japanese_language_security:
+    enabled: true
+    rules:
+      - "fullwidth_character_validation"
+      - "hiragana_katakana_injection_check"
+      - "unicode_normalization_validation"
+      - "shift_jis_encoding_attack_prevention"
+      
+  plantuml_specific_security:
+    enabled: true
+    rules:
+      - "plantuml_syntax_injection_prevention"
+      - "diagram_content_validation"
+      - "export_format_security"
+      - "template_system_hardening"
+
+# Performance and Resource Limits
+resource_limits:
+  max_memory_per_test: "512MB"
+  max_cpu_per_test: "2 cores"
+  max_execution_time: "30 minutes"
+  max_concurrent_tests: 4
+  
+  # Performance thresholds
+  performance_thresholds:
+    test_execution_time: 1800 # 30 minutes total
+    individual_test_timeout: 300 # 5 minutes per test
+    memory_usage_limit: 2048 # 2GB total
+    cpu_usage_limit: 80 # 80% CPU utilization
+
+# Notifications
+notifications:
+  channels:
+    email:
+      enabled: true
+      recipients: ["security-team@company.com", "dev-team@company.com"]
+      severity_filter: ["critical", "high"]
+      
+    slack:
+      enabled: true
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      channel: "#security-alerts"
+      severity_filter: ["critical"]
+      
+    teams:
+      enabled: false
+      webhook_url: "${TEAMS_WEBHOOK_URL}"
+      
+  templates:
+    critical_failure:
+      subject: "🚨 Critical Security Gate Failure - {{gate_name}}"
+      body: "Security gate {{gate_name}} has failed with {{failure_count}} critical issues."
+      
+    summary_report:
+      subject: "📊 Security Gates Execution Summary - {{date}}"
+      body: "Security gates execution completed. Overall score: {{security_score}}/100"
+
+# Version Control
+version_control:
+  track_changes: true
+  require_approval: true
+  audit_changes: true
+  rollback_capability: true

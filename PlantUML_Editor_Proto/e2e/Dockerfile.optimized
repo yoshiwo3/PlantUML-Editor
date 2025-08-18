@@ -1,0 +1,242 @@
+# Sprint2 E2E Test Foundation - Optimized Multi-stage Dockerfile
+# Production-ready with browser persistence and performance optimization
+
+# ========================================
+# Stage 1: Base Image with Dependencies
+# ========================================
+FROM node:20.18.0-bullseye-slim AS base
+
+# Build arguments
+ARG NODE_VERSION=20.18.0
+ARG PLAYWRIGHT_VERSION=1.48.0
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Labels for image metadata
+LABEL maintainer="PlantUML Editor Test Team"
+LABEL description="Optimized E2E Testing Environment for PlantUML Editor Sprint2"
+LABEL version="2.0.0"
+LABEL playwright.version=${PLAYWRIGHT_VERSION}
+LABEL node.version=${NODE_VERSION}
+
+# Environment variables for optimization
+ENV NODE_ENV=test \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright-browsers \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=false \
+    DEBIAN_FRONTEND=noninteractive \
+    TZ=Asia/Tokyo \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+# Install system dependencies in single layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Essential tools
+    curl \
+    wget \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    software-properties-common \
+    # Process and system utilities
+    dumb-init \
+    tini \
+    # Font and locale support (Japanese)
+    fonts-liberation \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    fonts-ipafont-gothic \
+    fonts-ipafont-mincho \
+    # X11 and display dependencies
+    xvfb \
+    dbus \
+    dbus-x11 \
+    # Browser dependencies - Core
+    libnss3 \
+    libnspr4 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    libasound2 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    # WebKit specific dependencies
+    libwoff1 \
+    libopus0 \
+    libwebp6 \
+    libwebpdemux2 \
+    libenchant-2-2 \
+    libgudev-1.0-0 \
+    libsecret-1-0 \
+    libhyphen0 \
+    libegl1 \
+    libnotify4 \
+    libxslt1.1 \
+    libevent-2.1-7 \
+    libgles2 \
+    # Additional dependencies for stability
+    libglib2.0-0 \
+    libgtk2.0-0 \
+    libxtst6 \
+    libxrandr2 \
+    libasound2-dev \
+    libpangocairo-1.0-0 \
+    libatk1.0-0 \
+    libcairo-gobject2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    # Image and media processing
+    libvips-dev \
+    # Timezone data
+    tzdata \
+    # Development tools (for native dependencies)
+    build-essential \
+    python3 \
+    # Clean up
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get autoclean \
+    && apt-get autoremove -y
+
+# Set timezone
+RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+# ========================================
+# Stage 2: Development Dependencies
+# ========================================
+FROM base AS development
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm ci --include=dev \
+    && npm cache clean --force
+
+# Install Playwright browsers with optimizations
+RUN npx playwright install chromium firefox webkit msedge \
+    && npx playwright install-deps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create user and directories
+RUN groupadd -r playwright \
+    && useradd -r -g playwright -G audio,video playwright \
+    && mkdir -p /home/playwright/Downloads \
+    && mkdir -p /ms-playwright-browsers \
+    && mkdir -p /app/test-results \
+    && mkdir -p /app/reports \
+    && chown -R playwright:playwright /home/playwright \
+    && chown -R playwright:playwright /ms-playwright-browsers \
+    && chown -R playwright:playwright /app
+
+# Copy application code
+COPY --chown=playwright:playwright . .
+
+# Set executable permissions
+RUN chmod +x utils/*.js 2>/dev/null || true \
+    && chmod +x scripts/*.sh 2>/dev/null || true
+
+# ========================================
+# Stage 3: Production Dependencies Only
+# ========================================
+FROM base AS production
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production \
+    && npm cache clean --force
+
+# Install Playwright browsers (production optimization)
+RUN npx playwright install chromium firefox webkit \
+    && npx playwright install-deps chromium firefox webkit \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create optimized user and directories
+RUN groupadd -r playwright \
+    && useradd -r -g playwright -G audio,video -s /bin/bash playwright \
+    && mkdir -p /home/playwright/{Downloads,.cache} \
+    && mkdir -p /ms-playwright-browsers \
+    && mkdir -p /app/{test-results,reports,logs} \
+    && chown -R playwright:playwright /home/playwright \
+    && chown -R playwright:playwright /ms-playwright-browsers \
+    && chown -R playwright:playwright /app
+
+# Copy only necessary application files
+COPY --chown=playwright:playwright config/ ./config/
+COPY --chown=playwright:playwright fixtures/ ./fixtures/
+COPY --chown=playwright:playwright helpers/ ./helpers/
+COPY --chown=playwright:playwright page-objects/ ./page-objects/
+COPY --chown=playwright:playwright setup/ ./setup/
+COPY --chown=playwright:playwright tests/ ./tests/
+COPY --chown=playwright:playwright utils/ ./utils/
+COPY --chown=playwright:playwright playwright.config.js ./
+COPY --chown=playwright:playwright *.json ./
+
+# Set permissions
+RUN chmod +x utils/*.js 2>/dev/null || true
+
+# ========================================
+# Stage 4: Runtime Configuration
+# ========================================
+FROM production AS runtime
+
+# Runtime environment variables
+ENV DISPLAY=:99 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright-browsers \
+    XDG_RUNTIME_DIR=/tmp \
+    BROWSER_PERSISTENCE_ENABLED=true
+
+# Health check script
+COPY --chown=playwright:playwright utils/docker-health-check.js /usr/local/bin/health-check
+RUN chmod +x /usr/local/bin/health-check
+
+# Health check configuration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD ["node", "/usr/local/bin/health-check"]
+
+# Switch to non-root user
+USER playwright
+
+# Expose ports
+EXPOSE 8086 8087 9323
+
+# Volume definitions for persistence
+VOLUME ["/ms-playwright-browsers", "/app/test-results", "/app/reports"]
+
+# Entry point with proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command
+CMD ["npm", "run", "test:e2e"]
+
+# ========================================
+# Build Information Labels
+# ========================================
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.name="PlantUML E2E Test Foundation" \
+      org.label-schema.description="Optimized E2E testing environment for PlantUML Editor" \
+      org.label-schema.url="https://github.com/plantuml/plantuml-editor" \
+      org.opencontainers.image.title="PlantUML E2E Test Foundation" \
+      org.opencontainers.image.description="Production-ready E2E testing environment" \
+      org.opencontainers.image.version=$VERSION \
+      org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.licenses="MIT"

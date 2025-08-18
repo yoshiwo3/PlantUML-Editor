@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インライン編集機能テスト</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="modal-styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>🔬 インライン編集機能テスト</h1>
+        </header>
+
+        <main class="main-content">
+            <section class="editor-panel">
+                <div class="editor-section">
+                    <h3>テストシナリオ</h3>
+                    
+                    <div style="margin: 20px 0;">
+                        <button id="test-condition" class="btn-primary" style="margin: 10px;">
+                            🔀 条件分岐編集テスト
+                        </button>
+                        <button id="test-loop" class="btn-primary" style="margin: 10px;">
+                            🔁 ループ編集テスト
+                        </button>
+                        <button id="test-parallel" class="btn-primary" style="margin: 10px;">
+                            ⚡ 並行処理編集テスト
+                        </button>
+                    </div>
+
+                    <div id="test-results" style="margin: 20px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+                        <h4>テスト結果</h4>
+                        <div id="results-content">
+                            テストを実行してください
+                        </div>
+                    </div>
+
+                    <!-- 処理フロー表示エリア -->
+                    <div id="action-list" class="action-list" style="margin: 20px;">
+                        <!-- ここにアクションが表示される -->
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-panel">
+                <div class="preview-header">
+                    <h3>PlantUMLコード</h3>
+                </div>
+                <div class="preview-content">
+                    <pre id="plantuml-code" class="code-output">@startuml
+@enduml</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- モーダル用のdiv（動的に作成される） -->
+    <div id="editModal"></div>
+
+    <script src="PlantUMLParser.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // テスト用のeditorインスタンス作成
+        const editor = new PlantUMLEditor();
+        window.editor = editor;
+
+        // テスト用のアクター追加
+        editor.actors = ['User', 'System', 'Database', 'API'];
+        
+        // テスト用のアクション追加
+        function setupTestData() {
+            editor.actions = [
+                {
+                    type: 'condition',
+                    conditionType: 'if-else',
+                    conditionName: 'ユーザー認証',
+                    trueBranch: [
+                        { from: 'System', to: 'Database', text: '認証情報確認', async: false },
+                        { from: 'Database', to: 'System', text: '認証OK', async: false }
+                    ],
+                    falseBranch: [
+                        { from: 'System', to: 'User', text: '認証失敗', async: false }
+                    ]
+                },
+                {
+                    type: 'loop',
+                    loopCondition: 'データが存在する間',
+                    loopActions: [
+                        { from: 'System', to: 'Database', text: '次のデータ取得', async: false },
+                        { from: 'Database', to: 'System', text: 'データ返却', async: false }
+                    ]
+                },
+                {
+                    type: 'parallel',
+                    branches: [
+                        [
+                            { from: 'System', to: 'API', text: 'API1呼び出し', async: true },
+                            { from: 'API', to: 'System', text: '結果1返却', async: true }
+                        ],
+                        [
+                            { from: 'System', to: 'Database', text: 'DB更新', async: true },
+                            { from: 'Database', to: 'System', text: '更新完了', async: true }
+                        ]
+                    ]
+                }
+            ];
+            
+            editor.updateActionList();
+            editor.updatePlantUML();
+        }
+
+        // テストボタンのイベントリスナー
+        document.getElementById('test-condition').addEventListener('click', () => {
+            setupTestData();
+            const resultsDiv = document.getElementById('results-content');
+            resultsDiv.innerHTML = '<p>条件分岐編集モーダルを開きます...</p>';
+            
+            // 条件分岐を編集
+            editor.editCondition(0);
+            
+            setTimeout(() => {
+                const modal = document.querySelector('.modal-overlay');
+                if (modal) {
+                    resultsDiv.innerHTML += '<p>✅ モーダルが表示されました</p>';
+                    
+                    // インライン編集要素の確認
+                    const inlineItems = modal.querySelectorAll('.action-item-inline');
+                    resultsDiv.innerHTML += `<p>インライン編集要素: ${inlineItems.length}個</p>`;
+                    
+                    // 各要素の確認
+                    const hasFromSelect = modal.querySelector('.actor-select-inline.from-actor');
+                    const hasArrowSelect = modal.querySelector('.arrow-type-inline');
+                    const hasToSelect = modal.querySelector('.actor-select-inline.to-actor');
+                    const hasMessageInput = modal.querySelector('.message-input-inline');
+                    const hasDeleteBtn = modal.querySelector('.btn-inline.delete');
+                    const hasQuestionBtn = modal.querySelector('.btn-inline.question');
+                    const hasAddBtn = modal.querySelector('.btn-add-action-inline');
+                    
+                    resultsDiv.innerHTML += `
+                        <ul>
+                            <li>FROM選択: ${hasFromSelect ? '✅' : '❌'}</li>
+                            <li>矢印選択: ${hasArrowSelect ? '✅' : '❌'}</li>
+                            <li>TO選択: ${hasToSelect ? '✅' : '❌'}</li>
+                            <li>メッセージ入力: ${hasMessageInput ? '✅' : '❌'}</li>
+                            <li>削除ボタン: ${hasDeleteBtn ? '✅' : '❌'}</li>
+                            <li>？ボタン: ${hasQuestionBtn ? '✅' : '❌'}</li>
+                            <li>追加ボタン: ${hasAddBtn ? '✅' : '❌'}</li>
+                        </ul>
+                    `;
+                } else {
+                    resultsDiv.innerHTML += '<p>❌ モーダルが表示されませんでした</p>';
+                }
+            }, 500);
+        });
+
+        document.getElementById('test-loop').addEventListener('click', () => {
+            setupTestData();
+            const resultsDiv = document.getElementById('results-content');
+            resultsDiv.innerHTML = '<p>ループ編集モーダルを開きます...</p>';
+            
+            // ループを編集
+            editor.editLoop(1);
+            
+            setTimeout(() => {
+                const modal = document.querySelector('.modal-overlay');
+                if (modal) {
+                    resultsDiv.innerHTML += '<p>✅ モーダルが表示されました</p>';
+                    
+                    // インライン編集要素の確認
+                    const inlineItems = modal.querySelectorAll('.action-item-inline');
+                    resultsDiv.innerHTML += `<p>インライン編集要素: ${inlineItems.length}個</p>`;
+                } else {
+                    resultsDiv.innerHTML += '<p>❌ モーダルが表示されませんでした</p>';
+                }
+            }, 500);
+        });
+
+        document.getElementById('test-parallel').addEventListener('click', () => {
+            setupTestData();
+            const resultsDiv = document.getElementById('results-content');
+            resultsDiv.innerHTML = '<p>並行処理編集モーダルを開きます...</p>';
+            
+            // 並行処理を編集
+            editor.editParallel(2);
+            
+            setTimeout(() => {
+                const modal = document.querySelector('.modal-overlay');
+                if (modal) {
+                    resultsDiv.innerHTML += '<p>✅ モーダルが表示されました</p>';
+                    
+                    // モーダルのサイズ確認
+                    const modalDialog = modal.querySelector('.modal-dialog');
+                    if (modalDialog) {
+                        const width = modalDialog.style.maxWidth || 'デフォルト';
+                        resultsDiv.innerHTML += `<p>モーダル幅: ${width}</p>`;
+                    }
+                    
+                    // インライン編集要素の確認
+                    const inlineItems = modal.querySelectorAll('.action-item-inline');
+                    resultsDiv.innerHTML += `<p>インライン編集要素: ${inlineItems.length}個</p>`;
+                    
+                    // ブランチ数の確認
+                    const branches = modal.querySelectorAll('.parallel-branch');
+                    resultsDiv.innerHTML += `<p>ブランチ数: ${branches.length}個</p>`;
+                    
+                    // 見切れチェック
+                    const branchesContainer = modal.querySelector('#edit-parallel-branches');
+                    if (branchesContainer) {
+                        const hasOverflow = branchesContainer.scrollWidth > branchesContainer.clientWidth;
+                        resultsDiv.innerHTML += `<p>横スクロール: ${hasOverflow ? '❌ 見切れあり' : '✅ 見切れなし'}</p>`;
+                    }
+                } else {
+                    resultsDiv.innerHTML += '<p>❌ モーダルが表示されませんでした</p>';
+                }
+            }, 500);
+        });
+
+        // 初期データセットアップ
+        setupTestData();
+    </script>
+
+    <style>
+        .btn-primary {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+    </style>
+</body>
+</html>

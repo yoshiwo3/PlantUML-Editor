@@ -1,0 +1,296 @@
+# Sprint2 E2E Test Foundation - Optimized Docker Compose
+# Production-ready test environment with browser persistence and health checks
+
+version: '3.8'
+
+services:
+  # Main E2E Test Service with Browser Persistence
+  playwright-e2e:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+      target: production
+      args:
+        NODE_VERSION: 20.18.0
+        PLAYWRIGHT_VERSION: 1.48.0
+    container_name: plantuml-e2e-foundation
+    environment:
+      # Core Configuration
+      NODE_ENV: test
+      BASE_URL: http://app:8086
+      TEST_ENV: docker
+      E2E_MODE: enabled
+      
+      # Playwright Configuration
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright-browsers
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: false
+      PLAYWRIGHT_WORKERS: ${PLAYWRIGHT_WORKERS:-2}
+      PLAYWRIGHT_RETRIES: ${PLAYWRIGHT_RETRIES:-1}
+      PLAYWRIGHT_TIMEOUT: ${PLAYWRIGHT_TIMEOUT:-90000}
+      
+      # Performance Optimization
+      PLAYWRIGHT_DISABLE_GPU: ${DISABLE_GPU:-false}
+      PLAYWRIGHT_DISABLE_DEV_SHM_USAGE: false
+      PLAYWRIGHT_NO_SANDBOX: false
+      
+      # Browser Persistence
+      BROWSER_PERSISTENCE_ENABLED: true
+      WEBKIT_PERSISTENCE_PATH: /ms-playwright-browsers/webkit
+      
+      # Reporting Configuration
+      ALLURE_RESULTS_DIR: /app/reports/allure-results
+      TEST_RESULTS_DIR: /app/test-results
+      
+      # Security Configuration
+      HEADLESS: ${HEADLESS:-true}
+      DISABLE_WEB_SECURITY: false
+      
+      # Timezone
+      TZ: Asia/Tokyo
+    volumes:
+      # Test Results and Reports (Persistent)
+      - type: bind
+        source: ./test-results
+        target: /app/test-results
+      - type: bind
+        source: ./reports
+        target: /app/reports
+      
+      # Browser Cache (Persistent for performance)
+      - playwright-browsers:/ms-playwright-browsers
+      - browser-cache:/home/playwright/.cache
+      
+      # Shared Memory (Performance)
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 2g
+      
+      # Test Configuration (Read-only)
+      - type: bind
+        source: ./config
+        target: /app/config
+        read_only: true
+      - type: bind
+        source: ./fixtures
+        target: /app/fixtures
+        read_only: true
+    
+    networks:
+      - e2e-test-network
+    
+    depends_on:
+      app:
+        condition: service_healthy
+      mock-server:
+        condition: service_healthy
+    
+    # Resource Limits (Optimized for E2E tests)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    
+    # Health Check
+    healthcheck:
+      test: ["CMD", "node", "utils/health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    
+    # Default Command
+    command: ["npm", "run", "test:foundation"]
+
+  # Application Under Test
+  app:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+      target: development
+    container_name: plantuml-app-test
+    environment:
+      NODE_ENV: test
+      PORT: 8086
+      E2E_TEST_MODE: enabled
+      DISABLE_AUTH: true
+      LOG_LEVEL: warn
+      TZ: Asia/Tokyo
+    ports:
+      - "${APP_PORT:-8086}:8086"
+    networks:
+      - e2e-test-network
+    volumes:
+      # Application logs
+      - app-logs:/app/logs
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 512m
+    
+    # Health Check for Application
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Mock API Server for Testing
+  mock-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    container_name: plantuml-mock-server
+    environment:
+      NODE_ENV: test
+      PORT: 3001
+      MOCK_DELAY: ${MOCK_DELAY:-0}
+    ports:
+      - "${MOCK_PORT:-3001}:3001"
+    networks:
+      - e2e-test-network
+    volumes:
+      - type: bind
+        source: ./mocks
+        target: /app/mocks
+        read_only: true
+    
+    # Health Check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # Test Database (Optional)
+  test-db:
+    image: postgres:15-alpine
+    container_name: plantuml-test-db
+    environment:
+      POSTGRES_DB: plantuml_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - test-db-data:/var/lib/postgresql/data
+    networks:
+      - e2e-test-network
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    
+    # Health Check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d plantuml_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # Allure Report Server (for development)
+  allure-server:
+    image: frankescobar/allure-docker-service:2.22.1
+    container_name: plantuml-allure-server
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: 5
+      KEEP_HISTORY: true
+      KEEP_HISTORY_LATEST: 25
+    ports:
+      - "${ALLURE_PORT:-4040}:5050"
+    volumes:
+      - type: bind
+        source: ./reports/allure-results
+        target: /app/allure-results
+      - allure-reports:/app/allure-reports
+    networks:
+      - e2e-test-network
+    profiles:
+      - reporting
+
+# Named Volumes for Persistence
+volumes:
+  # Browser binaries (persistent across container restarts)
+  playwright-browsers:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/volumes/playwright-browsers
+  
+  # Browser cache for performance
+  browser-cache:
+    driver: local
+  
+  # Application logs
+  app-logs:
+    driver: local
+  
+  # Test database data
+  test-db-data:
+    driver: local
+  
+  # Allure reports
+  allure-reports:
+    driver: local
+
+# Networks
+networks:
+  e2e-test-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+# Development overrides
+x-development: &development
+  environment:
+    NODE_ENV: development
+    DEBUG: 'playwright:*'
+    HEADLESS: false
+  volumes:
+    - type: bind
+      source: .
+      target: /app
+      consistency: cached
+
+# CI/CD overrides
+x-ci: &ci
+  environment:
+    CI: true
+    HEADLESS: true
+    PLAYWRIGHT_WORKERS: 1
+    PLAYWRIGHT_RETRIES: 2
+  deploy:
+    resources:
+      limits:
+        memory: 2G
+        cpus: '1.0'

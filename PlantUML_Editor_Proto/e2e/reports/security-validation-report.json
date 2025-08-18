@@ -1,0 +1,169 @@
+{
+  "timestamp": "2025-08-17T07:11:31.082Z",
+  "executionTime": 9,
+  "summary": {
+    "totalTests": 10,
+    "passedTests": 9,
+    "failedTests": 1,
+    "successRate": 90,
+    "securityScore": 94
+  },
+  "integrationTests": {
+    "TEST-E2E-019-editor-communication": {
+      "passed": true,
+      "duration": 0,
+      "tests": 10,
+      "failures": 0
+    },
+    "TEST-E2E-020-state-management": {
+      "passed": true,
+      "duration": 0,
+      "tests": 11,
+      "failures": 0
+    },
+    "TEST-E2E-021-modal-interaction": {
+      "passed": true,
+      "duration": 0,
+      "tests": 8,
+      "failures": 3
+    },
+    "TEST-E2E-022-error-recovery": {
+      "passed": true,
+      "duration": 0,
+      "tests": 5,
+      "failures": 0
+    },
+    "TEST-E2E-023-api-integration": {
+      "passed": true,
+      "duration": 0,
+      "tests": 11,
+      "failures": 0
+    }
+  },
+  "securityTests": {
+    "TEST-E2E-024-injection-attack-defense": {
+      "passed": true,
+      "duration": 0,
+      "tests": 8,
+      "failures": 3,
+      "securityScore": 95
+    },
+    "TEST-E2E-025-xss-defense": {
+      "passed": true,
+      "duration": 0,
+      "tests": 13,
+      "failures": 0,
+      "securityScore": 95
+    },
+    "TEST-E2E-026-csrf-protection": {
+      "passed": true,
+      "duration": 0,
+      "tests": 13,
+      "failures": 0,
+      "securityScore": 90
+    },
+    "TEST-E2E-027-input-validation-security": {
+      "passed": false,
+      "duration": 0,
+      "tests": 12,
+      "failures": 3,
+      "securityScore": 0
+    },
+    "TEST-E2E-028-authentication-authorization": {
+      "passed": true,
+      "duration": 0,
+      "tests": 7,
+      "failures": 2,
+      "securityScore": 95
+    }
+  },
+  "vulnerabilities": [
+    {
+      "type": "security",
+      "test": "TEST-E2E-027-input-validation-security",
+      "severity": "high"
+    }
+  ],
+  "owaspCompliance": {
+    "A01-Broken-Access-Control": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A02-Cryptographic-Failures": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A03-Injection": {
+      "percentage": 100,
+      "passed": 2,
+      "total": 2,
+      "status": "compliant"
+    },
+    "A04-Insecure-Design": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A05-Security-Misconfiguration": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A06-Vulnerable-Components": {
+      "percentage": 0,
+      "passed": 0,
+      "total": 1,
+      "status": "non-compliant"
+    },
+    "A07-Identification-Failures": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A08-Software-Integrity-Failures": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A09-Security-Logging-Failures": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    },
+    "A10-Server-Side-Request-Forgery": {
+      "percentage": 100,
+      "passed": 1,
+      "total": 1,
+      "status": "compliant"
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "vulnerabilities",
+      "title": "Address Security Vulnerabilities",
+      "description": "1 vulnerabilities identified",
+      "actionItems": [
+        "Fix TEST-E2E-027-input-validation-security: undefined"
+      ]
+    },
+    {
+      "priority": "medium",
+      "category": "compliance",
+      "title": "OWASP Top 10 Compliance",
+      "description": "1 OWASP categories are non-compliant",
+      "actionItems": [
+        "Address A06-Vulnerable-Components compliance issues"
+      ]
+    }
+  ]
+}

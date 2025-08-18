@@ -94,7 +94,10 @@
       "mcp__github__search_repositories",
       "mcp__fetch__fetch_url",
       "WebSearch",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)",
+      "mcp__playwright__browser_tab_new"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

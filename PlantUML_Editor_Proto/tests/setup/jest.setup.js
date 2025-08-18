@@ -1,22 +1,30 @@
 /**
- * Jest Test Setup Configuration - Sprint 1 Enhanced
+ * Jest Test Setup Configuration - Sprint 2 Enhanced
  * 
  * Jest実行前の環境設定とモック設定
  * セキュリティテスト用の初期化処理
  * CLAUDE.md標準テスト環境定義準拠
+ * Node.js v20対応版
  * 
  * 作成日: 2025-08-15
- * 更新日: 2025-08-15 (Sprint 1 対応)
+ * 更新日: 2025-08-16 (Sprint 2 Node.js v20対応)
  * 作成者: webapp-test-automation
  */
 
-// DOM環境のセットアップ（jsdom）
+// Node.js v20対応: TextEncoder/TextDecoderが存在しない場合のみ設定
+if (typeof global.TextEncoder === 'undefined') {
+  const { TextEncoder, TextDecoder } = require('util');
+  global.TextEncoder = TextEncoder;
+  global.TextDecoder = TextDecoder;
+}
+
+// DOM環境のセットアップ（jsdom）- TextEncoder設定後に実行
 require('jsdom-global')();
 
-// ES6+ モジュールサポートのためのTextEncoder/TextDecoder
-const { TextEncoder, TextDecoder } = require('util');
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
+// URL polyfill for older Node.js versions
+if (typeof global.URL === 'undefined') {
+  global.URL = require('url').URL;
+}
 
 // セキュリティテスト用の拡張カスタムマッチャー
 expect.extend({
@@ -189,7 +197,7 @@ global.prompt = jest.fn(() => 'test input');
 
 // Navigator API のモック
 Object.defineProperty(global.navigator, 'userAgent', {
-  value: 'PlantUML-Editor-Test-Agent/1.0 (Sprint1)',
+  value: 'PlantUML-Editor-Test-Agent/2.0 (Sprint2)',
   writable: true,
 });
 
@@ -244,13 +252,24 @@ global.measurePerformance = (name, fn) => {
 };
 
 // URL API のモック
-Object.defineProperty(global, 'URL', {
-  value: {
-    createObjectURL: jest.fn(() => 'blob:test-url'),
-    revokeObjectURL: jest.fn(),
-  },
-  writable: true,
-});
+if (typeof global.URL === 'undefined') {
+  Object.defineProperty(global, 'URL', {
+    value: class URL {
+      constructor(url) {
+        this.href = url;
+        this.origin = 'http://localhost:8086';
+        this.protocol = 'http:';
+        this.hostname = 'localhost';
+        this.port = '8086';
+      }
+      static createObjectURL() {
+        return 'blob:test-url';
+      }
+      static revokeObjectURL() {}
+    },
+    writable: true,
+  });
+}
 
 // Fetch API のモック（PlantUMLエディター特化）
 global.fetch = jest.fn((url, options = {}) => {
@@ -306,13 +325,15 @@ global.WebSocket = jest.fn(() => ({
 jest.useFakeTimers();
 
 // HTMLElement プロトタイプの拡張
-HTMLElement.prototype.scrollIntoView = jest.fn();
-HTMLElement.prototype.animate = jest.fn(() => ({
-  finished: Promise.resolve(),
-  cancel: jest.fn(),
-  play: jest.fn(),
-  pause: jest.fn()
-}));
+if (typeof HTMLElement !== 'undefined') {
+  HTMLElement.prototype.scrollIntoView = jest.fn();
+  HTMLElement.prototype.animate = jest.fn(() => ({
+    finished: Promise.resolve(),
+    cancel: jest.fn(),
+    play: jest.fn(),
+    pause: jest.fn()
+  }));
+}
 
 // Observer系API のモック
 global.IntersectionObserver = jest.fn(() => ({
@@ -377,27 +398,33 @@ const createMockStorage = () => {
     setItem: jest.fn((key, value) => {
       store.set(key, String(value));
       // storage イベント発火シミュレーション
-      const event = new Event('storage');
-      event.key = key;
-      event.newValue = String(value);
-      event.storageArea = this;
-      window.dispatchEvent(event);
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        const event = new Event('storage');
+        event.key = key;
+        event.newValue = String(value);
+        event.storageArea = this;
+        window.dispatchEvent(event);
+      }
     }),
     removeItem: jest.fn((key) => {
       const oldValue = store.get(key);
       store.delete(key);
       // storage イベント発火シミュレーション
-      const event = new Event('storage');
-      event.key = key;
-      event.oldValue = oldValue || null;
-      event.newValue = null;
-      event.storageArea = this;
-      window.dispatchEvent(event);
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        const event = new Event('storage');
+        event.key = key;
+        event.oldValue = oldValue || null;
+        event.newValue = null;
+        event.storageArea = this;
+        window.dispatchEvent(event);
+      }
     }),
     clear: jest.fn(() => {
       store.clear();
-      const event = new Event('storage');
-      window.dispatchEvent(event);
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        const event = new Event('storage');
+        window.dispatchEvent(event);
+      }
     }),
     key: jest.fn((index) => {
       const keys = Array.from(store.keys());
@@ -420,35 +447,39 @@ Object.defineProperty(global, 'sessionStorage', {
 });
 
 // CSS関連のモック
-Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
-  configurable: true,
-  value: 100,
-});
+if (typeof HTMLElement !== 'undefined') {
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    value: 100,
+  });
 
-Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-  configurable: true,
-  value: 100,
-});
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+    configurable: true,
+    value: 100,
+  });
+}
 
-Object.defineProperty(window, 'getComputedStyle', {
-  value: jest.fn(() => ({
-    getPropertyValue: jest.fn((prop) => {
-      // よくあるCSS プロパティの デフォルト値を返す
-      const defaults = {
-        'display': 'block',
-        'visibility': 'visible',
-        'opacity': '1',
-        'width': '100px',
-        'height': '100px'
-      };
-      return defaults[prop] || '';
-    }),
-    display: 'block',
-    visibility: 'visible',
-    opacity: '1'
-  })),
-  writable: true
-});
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'getComputedStyle', {
+    value: jest.fn(() => ({
+      getPropertyValue: jest.fn((prop) => {
+        // よくあるCSS プロパティの デフォルト値を返す
+        const defaults = {
+          'display': 'block',
+          'visibility': 'visible',
+          'opacity': '1',
+          'width': '100px',
+          'height': '100px'
+        };
+        return defaults[prop] || '';
+      }),
+      display: 'block',
+      visibility: 'visible',
+      opacity: '1'
+    })),
+    writable: true
+  });
+}
 
 // イベント関連のヘルパー（機能拡張）
 global.createMockEvent = (type, properties = {}) => {
@@ -535,36 +566,48 @@ global.waitForAsync = async (conditionFn, timeout = 1000) => {
 
 // DOM操作テスト用ヘルパー
 global.createTestDOM = () => {
-  document.body.innerHTML = `
-    <div id="plantuml-editor">
-      <textarea id="japanese-input" placeholder="日本語でシーケンス図を記述"></textarea>
-      <textarea id="plantuml-output" readonly></textarea>
-      <button id="add-action-btn">アクション追加</button>
-      <div id="modal-container"></div>
-      <div id="error-display" style="display: none;"></div>
-    </div>
-  `;
-  
-  return document.getElementById('plantuml-editor');
+  if (typeof document !== 'undefined') {
+    document.body.innerHTML = `
+      <div id="plantuml-editor">
+        <textarea id="japanese-input" placeholder="日本語でシーケンス図を記述"></textarea>
+        <textarea id="plantuml-output" readonly></textarea>
+        <button id="add-action-btn">アクション追加</button>
+        <div id="modal-container"></div>
+        <div id="error-display" style="display: none;"></div>
+      </div>
+    `;
+    
+    return document.getElementById('plantuml-editor');
+  }
+  return null;
 };
 
 global.cleanupTestDOM = () => {
-  document.body.innerHTML = '';
-  
-  // 残留イベントリスナーのクリーンアップ
-  const events = ['click', 'input', 'change', 'keydown', 'keyup', 'submit'];
-  events.forEach(eventType => {
-    document.removeEventListener(eventType, () => {});
-    window.removeEventListener(eventType, () => {});
-  });
+  if (typeof document !== 'undefined') {
+    document.body.innerHTML = '';
+    
+    // 残留イベントリスナーのクリーンアップ
+    const events = ['click', 'input', 'change', 'keydown', 'keyup', 'submit'];
+    events.forEach(eventType => {
+      try {
+        document.removeEventListener(eventType, () => {});
+        if (typeof window !== 'undefined') {
+          window.removeEventListener(eventType, () => {});
+        }
+      } catch (e) {
+        // イベントリスナーが存在しない場合は無視
+      }
+    });
+  }
 };
 
 // テスト実行前の初期化
 beforeAll(() => {
   if (!isCIMode) {
-    console.log('🧪 [Test Setup] Jest環境初期化完了 (Sprint 1)');
+    console.log('🧪 [Test Setup] Jest環境初期化完了 (Sprint 2)');
     console.log('🔒 [Test Setup] セキュリティテスト用モック設定完了');
     console.log('📊 [Test Setup] パフォーマンス測定機能有効化');
+    console.log('🚀 [Test Setup] Node.js v20対応完了');
   }
 });
 
@@ -582,24 +625,36 @@ beforeEach(() => {
   }
   
   // DOM の初期化
-  document.body.innerHTML = '';
+  if (typeof document !== 'undefined') {
+    document.body.innerHTML = '';
+  }
   
   // Storage のクリア
-  localStorage.clear();
-  sessionStorage.clear();
+  if (global.localStorage) {
+    global.localStorage.clear();
+  }
+  if (global.sessionStorage) {
+    global.sessionStorage.clear();
+  }
   
   // イベントリスナーのクリーンアップ
-  const events = ['error', 'unhandledrejection', 'securitypolicyviolation'];
-  events.forEach(event => {
-    document.removeEventListener(event, () => {});
-    window.removeEventListener(event, () => {});
-  });
+  if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    const events = ['error', 'unhandledrejection', 'securitypolicyviolation'];
+    events.forEach(event => {
+      try {
+        document.removeEventListener(event, () => {});
+        window.removeEventListener(event, () => {});
+      } catch (e) {
+        // イベントリスナーが存在しない場合は無視
+      }
+    });
+  }
 
   // パフォーマンス測定リセット
-  if (performance.mark) {
+  if (performance.mark && performance.mark.mockClear) {
     performance.mark.mockClear();
   }
-  if (performance.measure) {
+  if (performance.measure && performance.measure.mockClear) {
     performance.measure.mockClear();
   }
 });
@@ -637,8 +692,8 @@ process.on('uncaughtException', (error) => {
 // テスト環境識別用
 global.__TEST_ENV__ = true;
 global.__JEST_SETUP_COMPLETE__ = true;
-global.__SPRINT_1_TEST__ = true;
+global.__SPRINT_2_TEST__ = true;
 
 if (!isCIMode) {
-  console.log('✅ [Test Setup] Jest Setup完了 - Sprint 1 単体テスト環境準備済み');
+  console.log('✅ [Test Setup] Jest Setup完了 - Sprint 2 統合・パフォーマンステスト環境準備済み');
 }

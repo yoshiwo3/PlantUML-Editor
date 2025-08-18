@@ -1,0 +1,440 @@
+# Sprint2 E2E Test Foundation - GitHub Actions CI/CD Pipeline
+# Production-ready with parallel execution, Allure reporting, and notifications
+
+name: E2E Test Foundation
+
+on:
+  # Trigger on pull requests and pushes to main
+  push:
+    branches: [ main, develop, feature/sprint2-* ]
+    paths:
+      - 'PlantUML_Editor_Proto/e2e/**'
+      - 'PlantUML_Editor_Proto/src/**'
+      - 'PlantUML_Editor_Proto/*.js'
+      - 'PlantUML_Editor_Proto/*.html'
+      - 'PlantUML_Editor_Proto/package*.json'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'PlantUML_Editor_Proto/e2e/**'
+      - 'PlantUML_Editor_Proto/src/**'
+      - 'PlantUML_Editor_Proto/*.js'
+      - 'PlantUML_Editor_Proto/*.html'
+      - 'PlantUML_Editor_Proto/package*.json'
+  
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'foundation'
+        type: choice
+        options:
+          - foundation
+          - all
+          - basic
+          - editor
+          - performance
+          - security
+      browser:
+        description: 'Browser to test'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - chromium
+          - firefox
+          - webkit
+          - edge
+      parallel:
+        description: 'Run tests in parallel'
+        required: true
+        default: true
+        type: boolean
+
+# Environment variables
+env:
+  NODE_VERSION: '20.18.0'
+  PLAYWRIGHT_VERSION: '1.48.0'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: plantuml-e2e-foundation
+
+# Job definitions
+jobs:
+  # =====================================
+  # Environment Setup and Validation
+  # =====================================
+  setup:
+    name: Setup and Validation
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      cache-key: ${{ steps.cache-keys.outputs.node-cache-key }}
+      docker-cache-key: ${{ steps.cache-keys.outputs.docker-cache-key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: PlantUML_Editor_Proto/e2e/package-lock.json
+      
+      - name: Generate cache keys
+        id: cache-keys
+        run: |
+          echo "node-cache-key=node-${{ env.NODE_VERSION }}-${{ hashFiles('PlantUML_Editor_Proto/e2e/package-lock.json') }}" >> $GITHUB_OUTPUT
+          echo "docker-cache-key=docker-${{ env.PLAYWRIGHT_VERSION }}-${{ hashFiles('PlantUML_Editor_Proto/e2e/Dockerfile.optimized') }}" >> $GITHUB_OUTPUT
+      
+      - name: Set test matrix
+        id: set-matrix
+        run: |
+          # Dynamic matrix based on inputs or default
+          if [ "${{ github.event.inputs.browser }}" = "all" ] || [ "${{ github.event.inputs.browser }}" = "" ]; then
+            BROWSERS='["chromium", "firefox", "webkit"]'
+          else
+            BROWSERS='["${{ github.event.inputs.browser }}"]'
+          fi
+          
+          if [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
+            SUITES='["foundation", "basic", "editor", "performance"]'
+          else
+            SUITES='["${{ github.event.inputs.test_suite || 'foundation' }}"]'
+          fi
+          
+          echo "matrix={\"browser\":$BROWSERS,\"suite\":$SUITES}" >> $GITHUB_OUTPUT
+      
+      - name: Validate environment
+        working-directory: PlantUML_Editor_Proto/e2e
+        run: |
+          echo "🔍 Validating CI/CD environment..."
+          node --version
+          npm --version
+          echo "✅ Environment validation complete"
+
+  # =====================================
+  # Build and Cache Docker Images
+  # =====================================
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and cache Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: PlantUML_Editor_Proto/e2e
+          file: PlantUML_Editor_Proto/e2e/Dockerfile.optimized
+          target: production
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            PLAYWRIGHT_VERSION=${{ env.PLAYWRIGHT_VERSION }}
+            BUILD_DATE=${{ steps.meta.outputs.created }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ steps.meta.outputs.version }}
+
+  # =====================================
+  # Parallel E2E Test Execution
+  # =====================================
+  e2e-tests:
+    name: E2E Tests (${{ matrix.suite }}, ${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    needs: [setup, build]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright-browsers
+      ALLURE_RESULTS_DIR: allure-results
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: PlantUML_Editor_Proto/e2e/package-lock.json
+      
+      - name: Cache Playwright browsers
+        id: cache-browsers
+        uses: actions/cache@v3
+        with:
+          path: /ms-playwright-browsers
+          key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}-${{ matrix.browser }}
+          restore-keys: |
+            playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}-
+            playwright-browsers-
+      
+      - name: Install dependencies
+        working-directory: PlantUML_Editor_Proto/e2e
+        run: |
+          npm ci
+          npx playwright install ${{ matrix.browser }} --with-deps
+      
+      - name: Create test directories
+        run: |
+          mkdir -p PlantUML_Editor_Proto/e2e/test-results
+          mkdir -p PlantUML_Editor_Proto/e2e/reports/allure-results
+          mkdir -p PlantUML_Editor_Proto/e2e/reports/html
+      
+      - name: Start application server
+        working-directory: PlantUML_Editor_Proto
+        run: |
+          npm install
+          npm run start:test &
+          
+          # Wait for server to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:8086/health; do sleep 2; done'
+        env:
+          NODE_ENV: test
+          PORT: 8086
+      
+      - name: Run E2E tests
+        working-directory: PlantUML_Editor_Proto/e2e
+        run: |
+          case "${{ matrix.suite }}" in
+            "foundation")
+              npm run test:foundation -- --project=${{ matrix.browser }}
+              ;;
+            "basic")
+              npm run test:basic -- --project=${{ matrix.browser }}
+              ;;
+            "editor")
+              npm run test:editor -- --project=${{ matrix.browser }}
+              ;;
+            "performance")
+              npm run test:performance -- --project=${{ matrix.browser }}
+              ;;
+            "all")
+              npm run test:e2e -- --project=${{ matrix.browser }}
+              ;;
+            *)
+              npm run test:foundation -- --project=${{ matrix.browser }}
+              ;;
+          esac
+        env:
+          BASE_URL: http://localhost:8086
+          HEADLESS: true
+          PLAYWRIGHT_WORKERS: ${{ github.event.inputs.parallel == 'true' && '2' || '1' }}
+          CI: true
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.suite }}-${{ matrix.browser }}
+          path: |
+            PlantUML_Editor_Proto/e2e/test-results/
+            PlantUML_Editor_Proto/e2e/reports/
+          retention-days: 7
+      
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: allure-results-${{ matrix.suite }}-${{ matrix.browser }}
+          path: PlantUML_Editor_Proto/e2e/reports/allure-results/
+          retention-days: 30
+
+  # =====================================
+  # Performance Analysis
+  # =====================================
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always() && contains(needs.e2e-tests.result, 'success')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          pattern: test-results-performance-*
+          path: test-results/
+      
+      - name: Analyze performance metrics
+        run: |
+          echo "📊 Analyzing performance metrics..."
+          # Performance analysis logic here
+          find test-results/ -name "*.json" -exec echo "Processing {}" \;
+          echo "✅ Performance analysis complete"
+      
+      - name: Comment performance results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Performance analysis completed. Check the workflow for detailed metrics.'
+            })
+
+  # =====================================
+  # Generate Allure Report
+  # =====================================
+  allure-report:
+    name: Generate Allure Report
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all Allure results
+        uses: actions/download-artifact@v3
+        with:
+          pattern: allure-results-*
+          path: allure-results/
+      
+      - name: Merge Allure results
+        run: |
+          mkdir -p merged-allure-results
+          find allure-results/ -name "*.json" -exec cp {} merged-allure-results/ \;
+          find allure-results/ -name "*.txt" -exec cp {} merged-allure-results/ \;
+      
+      - name: Generate Allure report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: merged-allure-results
+          allure_report: allure-report
+          gh_pages: allure-history
+      
+      - name: Deploy Allure report to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-history
+          destination_dir: allure-report
+
+  # =====================================
+  # Security Scan
+  # =====================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # =====================================
+  # Test Results Summary
+  # =====================================
+  test-summary:
+    name: Test Results Summary
+    runs-on: ubuntu-latest
+    needs: [e2e-tests, performance-analysis, allure-report]
+    if: always()
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "# 🧪 E2E Test Foundation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Suite**: ${{ github.event.inputs.test_suite || 'foundation' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Browser**: ${{ github.event.inputs.browser || 'all' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "- E2E Tests: ${{ needs.e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance Analysis: ${{ needs.performance-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Allure Report: ${{ needs.allure-report.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View Allure Report](https://your-org.github.io/plantuml-editor/allure-report/)" >> $GITHUB_STEP_SUMMARY
+
+  # =====================================
+  # Notifications
+  # =====================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [test-summary]
+    if: always()
+    steps:
+      - name: Notify on Slack
+        if: needs.test-summary.result == 'failure'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#e2e-tests'
+          text: |
+            🚨 E2E Test Foundation Failed
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Notify on success
+        if: needs.test-summary.result == 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#e2e-tests'
+          text: |
+            ✅ E2E Test Foundation Passed
+            Branch: ${{ github.ref_name }}
+            All tests completed successfully!
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

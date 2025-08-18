@@ -1,0 +1,336 @@
+# Docker Compose for Sprint3 Test Framework
+# Hybrid Object Model + Docker Swarm 並列実行対応
+
+version: '3.8'
+
+services:
+  # アプリケーションサービス
+  app:
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      - NODE_ENV=test
+      - E2E_MODE=enabled
+      - TEST_ENV=docker
+      - LOG_LEVEL=info
+    volumes:
+      - ../../../:/app
+      - /app/node_modules
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 単体テスト実行サービス
+  test-unit:
+    image: node:20.18.0-alpine
+    working_dir: /workspace
+    command: npm run test:unit
+    environment:
+      - NODE_ENV=test
+      - TEST_TYPE=unit
+      - COVERAGE_ENABLED=true
+    volumes:
+      - ../../../:/workspace
+      - unit_node_modules:/workspace/node_modules
+    networks:
+      - test-network
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # 統合テスト実行サービス
+  test-integration:
+    image: node:20.18.0-alpine
+    working_dir: /workspace
+    command: npm run test:integration
+    environment:
+      - NODE_ENV=test
+      - TEST_TYPE=integration
+      - BASE_URL=http://app:8086
+    volumes:
+      - ../../../:/workspace
+      - integration_node_modules:/workspace/node_modules
+    networks:
+      - test-network
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # E2Eテスト実行サービス
+  test-e2e:
+    image: mcr.microsoft.com/playwright:v1.48.0-focal
+    working_dir: /workspace
+    command: npm run test:e2e
+    environment:
+      - NODE_ENV=test
+      - TEST_TYPE=e2e
+      - BASE_URL=http://app:8086
+      - HEADLESS=true
+      - BROWSER=all
+    volumes:
+      - ../../../:/workspace
+      - e2e_node_modules:/workspace/node_modules
+      - playwright_browsers:/ms-playwright
+    networks:
+      - test-network
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  # セキュリティテスト実行サービス
+  test-security:
+    image: owasp/zap2docker-stable
+    working_dir: /workspace
+    command: >
+      sh -c "
+        npm install &&
+        npm run test:security &&
+        zap-baseline.py -t http://app:8086 -J /workspace/reports/security/zap-report.json
+      "
+    environment:
+      - NODE_ENV=test
+      - TEST_TYPE=security
+      - BASE_URL=http://app:8086
+      - OWASP_ZAP_ENABLED=true
+    volumes:
+      - ../../../:/workspace
+      - security_reports:/workspace/reports/security
+    networks:
+      - test-network
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+
+  # パフォーマンステスト実行サービス
+  test-performance:
+    image: cypress/browsers:node20.18.0-chrome126-ff127
+    working_dir: /workspace
+    command: >
+      sh -c "
+        npm install -g lighthouse-ci &&
+        npm run test:performance &&
+        lhci autorun --config=./tests/framework/config/lighthouse.config.js
+      "
+    environment:
+      - NODE_ENV=test
+      - TEST_TYPE=performance
+      - BASE_URL=http://app:8086
+      - LIGHTHOUSE_ENABLED=true
+    volumes:
+      - ../../../:/workspace
+      - performance_reports:/workspace/reports/performance
+    networks:
+      - test-network
+    depends_on:
+      app:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
+  # Allureレポートサービス
+  allure-reporting:
+    image: frankescobar/allure-docker-service:2.24.0
+    ports:
+      - "5050:5050"
+    environment:
+      - CHECK_RESULTS_EVERY_SECONDS=5
+      - KEEP_HISTORY=20
+    volumes:
+      - ../../../reports/allure-results:/app/allure-results
+      - ../../../reports/allure-reports:/app/default-reports
+    networks:
+      - test-network
+
+  # Grafana監視サービス
+  grafana:
+    image: grafana/grafana:10.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    networks:
+      - test-network
+    profiles:
+      - monitoring
+
+  # Prometheus監視データ収集
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - test-network
+    profiles:
+      - monitoring
+
+  # テスト結果集約サービス
+  test-aggregator:
+    image: node:20.18.0-alpine
+    working_dir: /workspace
+    command: >
+      sh -c "
+        npm install &&
+        node scripts/aggregate-test-results.js
+      "
+    environment:
+      - RESULTS_DIR=/workspace/reports
+      - OUTPUT_FORMAT=json,html,junit
+    volumes:
+      - ../../../:/workspace
+      - test_reports:/workspace/reports
+    networks:
+      - test-network
+    depends_on:
+      - test-unit
+      - test-integration
+      - test-e2e
+      - test-security
+      - test-performance
+
+# ネットワーク設定
+networks:
+  test-network:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ボリューム設定
+volumes:
+  unit_node_modules:
+  integration_node_modules:
+  e2e_node_modules:
+  playwright_browsers:
+  security_reports:
+  performance_reports:
+  test_reports:
+  grafana_data:
+  prometheus_data:
+
+# Docker Swarm設定
+configs:
+  prometheus_config:
+    file: ./prometheus/prometheus.yml
+  grafana_dashboard:
+    file: ./grafana/dashboards/test-metrics.json
+
+secrets:
+  grafana_admin_password:
+    external: true
+
+# デプロイ設定
+deploy:
+  placement:
+    constraints:
+      - node.role == manager
+  restart_policy:
+    condition: on-failure
+    delay: 5s
+    max_attempts: 3
+    window: 120s
+  update_config:
+    parallelism: 1
+    delay: 10s
+    failure_action: rollback
+  rollback_config:
+    parallelism: 1
+    delay: 10s
+
+# プロファイル設定
+profiles:
+  # 基本テストセット
+  - name: basic
+    services: [app, test-unit, test-integration]
+  
+  # 完全テストセット
+  - name: full
+    services: [app, test-unit, test-integration, test-e2e, test-security, test-performance]
+  
+  # CI/CDテストセット
+  - name: ci
+    services: [app, test-unit, test-integration, test-e2e]
+  
+  # 監視付きテストセット
+  - name: monitoring
+    services: [app, test-unit, test-integration, test-e2e, grafana, prometheus]
+
+# ヘルスチェック設定
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+# 共通リソース制限
+x-common-resources: &common-resources
+  deploy:
+    resources:
+      limits:
+        memory: 1G
+        cpus: '1.0'
+      reservations:
+        memory: 512M
+        cpus: '0.5'
+
+# 共通環境変数
+x-common-environment: &common-environment
+  NODE_ENV: test
+  LOG_LEVEL: info
+  TIMEOUT_MULTIPLIER: 1.5

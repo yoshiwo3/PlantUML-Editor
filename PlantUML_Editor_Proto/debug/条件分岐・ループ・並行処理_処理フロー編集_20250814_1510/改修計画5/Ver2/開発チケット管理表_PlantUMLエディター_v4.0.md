@@ -78,6 +78,70 @@
 - [ ] メモリリーク0件
 - [ ] 統合テスト成功率95%以上
 
+## Sprint 2 E2Eテスト拡充 (2025-08-16追加)
+
+### E2Eテストスイート実装（28チケット・111ポイント）
+
+#### Phase 1: テスト基盤構築（Week 3-4）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-001 | E2Eテストフレームワーク構築 | EP-004 | 8 | Critical | - | webapp-test-automation | Todo |
+| TEST-E2E-002 | Docker環境最適化 | EP-004 | 5 | High | TEST-E2E-001 | docker-dev-env-builder | Todo |
+| TEST-E2E-003 | CI/CDパイプライン強化 | EP-004 | 5 | High | TEST-E2E-002 | webapp-test-automation | Todo |
+| TEST-E2E-004 | モックサービス実装 | EP-004 | 3 | Medium | TEST-E2E-001 | web-app-coder | Todo |
+| TEST-E2E-005 | テストデータ管理システム | EP-004 | 3 | Medium | TEST-E2E-004 | dev-ticket-manager | Todo |
+
+#### Phase 2: エディターテスト実装（Week 3-4）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-006 | ActionEditor基本操作テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-007 | ActionEditor高度機能テスト | EP-004 | 3 | High | TEST-E2E-006 | webapp-test-automation | Todo |
+| TEST-E2E-008 | ConditionEditor分岐ロジックテスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-009 | ConditionEditorUI操作テスト | EP-004 | 3 | High | TEST-E2E-008 | webapp-test-automation | Todo |
+| TEST-E2E-010 | LoopEditor繰り返し処理テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-011 | LoopEditorパフォーマンステスト | EP-004 | 3 | High | TEST-E2E-010 | webapp-test-automation | Todo |
+| TEST-E2E-012 | ParallelEditor並行処理テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-013 | ParallelEditor同期制御テスト | EP-004 | 3 | High | TEST-E2E-012 | webapp-test-automation | Todo |
+
+#### Phase 3: パフォーマンステスト（Week 5-6）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-014 | WebWorker並列処理テスト | EP-004 | 5 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-015 | 仮想スクロール性能テスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-016 | メモリリーク検出テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-017 | レンダリング最適化テスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-018 | 大規模データ処理テスト | EP-004 | 5 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+
+#### Phase 4: 統合・セキュリティテスト（Week 5-6）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-019 | エディター間通信テスト | EP-004 | 5 | Critical | TEST-E2E-006,008,010,012 | webapp-test-automation | Todo |
+| TEST-E2E-020 | 状態管理統合テスト | EP-004 | 5 | Critical | TEST-E2E-019 | webapp-test-automation | Todo |
+| TEST-E2E-021 | モーダル連携テスト | EP-004 | 3 | High | TEST-E2E-019 | webapp-test-automation | Todo |
+| TEST-E2E-022 | エラーリカバリーテスト | EP-004 | 3 | High | TEST-E2E-020 | webapp-test-automation | Todo |
+| TEST-E2E-023 | API統合テスト | EP-004 | 5 | High | TEST-E2E-004 | webapp-test-automation | Todo |
+| TEST-E2E-024 | インジェクション攻撃防御テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-025 | XSS防御検証テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-026 | CSRF対策検証テスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-027 | 入力検証セキュリティテスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-028 | 認証・認可テスト | EP-004 | 5 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+
+**Sprint 2 E2Eテスト合計**: 111ポイント（28チケット）
+
+### 55のE2Eテストシナリオ内訳
+- **基本機能テスト**: 8シナリオ
+- **エディター機能テスト**: 7シナリオ  
+- **図表タイプテスト**: 6シナリオ
+- **インライン編集テスト**: 5シナリオ
+- **エラーハンドリングテスト**: 5シナリオ
+- **パフォーマンステスト**: 4シナリオ
+- **セキュリティテスト**: 4シナリオ
+- **アクセシビリティテスト**: 4シナリオ
+- **統合テスト**: 4シナリオ
+- **回帰テスト**: 3シナリオ
+- **ストレステスト**: 3シナリオ
+- **クロスブラウザテスト**: 2シナリオ
+
 ## Sprint 3: テスト基盤構築（Week 5-6）
 
 ### チケット一覧（詳細化版）

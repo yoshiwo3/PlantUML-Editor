@@ -1,7 +1,7 @@
 {
   "name": "plantuml-editor-e2e-tests",
   "version": "1.0.0",
-  "description": "PlantUMLエディタのE2Eテスト - Phase 2対応",
+  "description": "PlantUMLエディタのE2Eテスト - Performance E2E Tests Sprint2対応",
   "scripts": {
     "test": "node test-docker.js",
     "test:firefox": "node test-docker.js firefox",
@@ -53,7 +53,24 @@
     "phase2:help": "node docs/phase2/test-runner-phase2.js --help",
     "phase2:sync-test": "node docs/phase2/test-sync-functionality.js",
     "phase2:flows-test": "node docs/phase2/test-complex-flows.js",
-    "phase2:performance-test": "node docs/phase2/test-performance-metrics.js"
+    "phase2:performance-test": "node docs/phase2/test-performance-metrics.js",
+    
+    "performance:webworker": "npx playwright test tests/performance-webworker.spec.js --project=performance",
+    "performance:virtual-scroll": "npx playwright test tests/performance-virtual-scroll.spec.js --project=performance",
+    "performance:memory-leak": "npx playwright test tests/performance-memory-leak.spec.js --project=performance",
+    "performance:rendering": "npx playwright test tests/performance-rendering.spec.js --project=performance",
+    "performance:large-data": "npx playwright test tests/performance-large-data.spec.js --project=performance",
+    "performance:suite": "npx playwright test tests/performance-suite.spec.js --project=performance",
+    "performance:all": "npx playwright test tests/performance-*.spec.js --project=performance",
+    
+    "performance:ci": "npx playwright test tests/performance-*.spec.js --project=performance --reporter=json --output-dir=test-results",
+    "performance:report": "node scripts/generate-performance-report.js",
+    "performance:gate": "node scripts/performance-gate-check.js",
+    "performance:benchmark": "node scripts/update-performance-benchmarks.js",
+    
+    "docker:performance": "docker-compose run --rm playwright npm run performance:all",
+    "docker:performance:ci": "docker-compose run --rm playwright npm run performance:ci",
+    "docker:performance:gate": "docker-compose run --rm playwright npm run performance:gate"
   },
   "dependencies": {
     "playwright": "^1.48.0"
@@ -61,6 +78,19 @@
   "author": "Claude Code",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.48.0"
-  }
+    "@playwright/test": "^1.48.0",
+    "fs-extra": "^11.1.1",
+    "json-schema": "^0.4.0"
+  },
+  "engines": {
+    "node": ">=20.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/plantuml-editor-proto"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/plantuml-editor-proto/issues"
+  },
+  "homepage": "https://github.com/your-org/plantuml-editor-proto#readme"
 }

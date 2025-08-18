@@ -1,0 +1,237 @@
+{
+  "timestamp": "2025-08-17T18:10:17.022Z",
+  "summary": {
+    "total": 6,
+    "passed": 1,
+    "failed": 5,
+    "implementationRate": 17
+  },
+  "details": [
+    {
+      "feature": "インライン編集機能（7要素アクション構造）",
+      "timestamp": "2025-08-17T18:10:13.944Z",
+      "checks": [
+        {
+          "name": "ファイル存在確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\ActionEditor.js",
+              "exists": true
+            },
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\EditModalManager.js",
+              "exists": true
+            }
+          ]
+        },
+        {
+          "name": "コード実装確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\ActionEditor.js",
+              "lines": 816,
+              "empty": false
+            },
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\EditModalManager.js",
+              "lines": 566,
+              "empty": false
+            }
+          ]
+        },
+        {
+          "name": "機能動作確認",
+          "passed": false,
+          "details": "エンドポイントテスト未実装"
+        },
+        {
+          "name": "UI要素確認",
+          "passed": false,
+          "details": "UI検証未実装"
+        }
+      ],
+      "evidence": [],
+      "passed": false
+    },
+    {
+      "feature": "条件分岐ブロック編集機能",
+      "timestamp": "2025-08-17T18:10:14.468Z",
+      "checks": [
+        {
+          "name": "ファイル存在確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\ConditionEditor.js",
+              "exists": true
+            }
+          ]
+        },
+        {
+          "name": "コード実装確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\ConditionEditor.js",
+              "lines": 1009,
+              "empty": false
+            }
+          ]
+        },
+        {
+          "name": "UI要素確認",
+          "passed": false,
+          "details": "UI検証未実装"
+        }
+      ],
+      "evidence": [],
+      "passed": false
+    },
+    {
+      "feature": "ループブロック編集機能",
+      "timestamp": "2025-08-17T18:10:14.977Z",
+      "checks": [
+        {
+          "name": "ファイル存在確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\LoopEditor.js",
+              "exists": true
+            }
+          ]
+        },
+        {
+          "name": "コード実装確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\LoopEditor.js",
+              "lines": 1561,
+              "empty": false
+            }
+          ]
+        },
+        {
+          "name": "UI要素確認",
+          "passed": false,
+          "details": "UI検証未実装"
+        }
+      ],
+      "evidence": [],
+      "passed": false
+    },
+    {
+      "feature": "並行処理ブロック編集機能",
+      "timestamp": "2025-08-17T18:10:15.496Z",
+      "checks": [
+        {
+          "name": "ファイル存在確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\ParallelEditor.js",
+              "exists": true
+            }
+          ]
+        },
+        {
+          "name": "コード実装確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\components\\editors\\ParallelEditor.js",
+              "lines": 2366,
+              "empty": false
+            }
+          ]
+        },
+        {
+          "name": "UI要素確認",
+          "passed": false,
+          "details": "UI検証未実装"
+        }
+      ],
+      "evidence": [],
+      "passed": false
+    },
+    {
+      "feature": "セキュリティ基盤（DOMPurify統合）",
+      "timestamp": "2025-08-17T18:10:15.998Z",
+      "checks": [
+        {
+          "name": "ファイル存在確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\security\\SecurityMiddleware.js",
+              "exists": true
+            },
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\security\\InputValidator.js",
+              "exists": true
+            }
+          ]
+        },
+        {
+          "name": "コード実装確認",
+          "passed": true,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\security\\SecurityMiddleware.js",
+              "lines": 614,
+              "empty": false
+            },
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\security\\InputValidator.js",
+              "lines": 712,
+              "empty": false
+            }
+          ]
+        }
+      ],
+      "evidence": [],
+      "passed": true
+    },
+    {
+      "feature": "WebWorker統合（パフォーマンス最適化）",
+      "timestamp": "2025-08-17T18:10:16.512Z",
+      "checks": [
+        {
+          "name": "ファイル存在確認",
+          "passed": false,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\workers\\plantuml.worker.js",
+              "exists": false
+            },
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\performance\\RenderOptimizer.js",
+              "exists": false
+            }
+          ]
+        },
+        {
+          "name": "コード実装確認",
+          "passed": false,
+          "details": [
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\workers\\plantuml.worker.js",
+              "lines": 0,
+              "empty": true
+            },
+            {
+              "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\src\\performance\\RenderOptimizer.js",
+              "lines": 0,
+              "empty": true
+            }
+          ]
+        }
+      ],
+      "evidence": [],
+      "passed": false
+    }
+  ]
+}

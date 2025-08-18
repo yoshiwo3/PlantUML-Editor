@@ -1,0 +1,204 @@
+# Alertmanager Configuration for PlantUML Editor
+# アラート通知とエスカレーション設定
+
+global:
+  # SMTP設定（メール通知用）
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@plantuml-editor.local'
+  smtp_auth_username: ''
+  smtp_auth_password: ''
+  smtp_require_tls: false
+
+# ルーティング設定
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook.default'
+  
+  routes:
+    # 重要度別ルーティング
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+      
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 2h
+      
+    - match:
+        alertname: PlantUMLServiceDown
+      receiver: 'service-down-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+      
+    - match:
+        alertname: HighErrorRate
+      receiver: 'error-rate-alerts'
+      group_wait: 10s
+      repeat_interval: 15m
+      
+    - match:
+        alertname: MemoryLeak
+      receiver: 'performance-alerts'
+      group_wait: 30s
+      repeat_interval: 1h
+
+# 受信者設定
+receivers:
+  # デフォルト受信者
+  - name: 'web.hook.default'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+        http_config:
+          bearer_token: 'webhook-token-123'
+        title: 'PlantUML Editor Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+
+  # 重要アラート受信者
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'dev-team@company.com'
+        subject: '🚨 CRITICAL: PlantUML Editor Alert'
+        headers:
+          Priority: 'urgent'
+        body: |
+          🚨 重要なアラートが発生しました
+          
+          {{ range .Alerts }}
+          アラート名: {{ .Annotations.summary }}
+          説明: {{ .Annotations.description }}
+          インスタンス: {{ .Labels.instance }}
+          時刻: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          
+          ダッシュボード: http://localhost:3000/d/plantuml-e2e-tests
+          ログ: http://localhost:5601
+          {{ end }}
+          
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-critical'
+        title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          {{ end }}
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: 'http://localhost:3000/d/plantuml-e2e-tests'
+          - type: button
+            text: 'View Logs'
+            url: 'http://localhost:5601'
+
+  # 警告アラート受信者
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'dev-team@company.com'
+        subject: '⚠️ WARNING: PlantUML Editor Alert'
+        body: |
+          ⚠️ 警告レベルのアラートが発生しました
+          
+          {{ range .Alerts }}
+          アラート名: {{ .Annotations.summary }}
+          説明: {{ .Annotations.description }}
+          インスタンス: {{ .Labels.instance }}
+          時刻: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+  # サービス停止アラート受信者
+  - name: 'service-down-alerts'
+    email_configs:
+      - to: 'ops-team@company.com, dev-team@company.com'
+        subject: '🔴 SERVICE DOWN: PlantUML Editor'
+        body: |
+          🔴 PlantUMLエディタサービスが停止しています
+          
+          {{ range .Alerts }}
+          サービス: {{ .Labels.job }}
+          インスタンス: {{ .Labels.instance }}
+          停止時刻: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          
+          即座に対応が必要です。
+          {{ end }}
+          
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/service-down'
+        send_resolved: true
+
+  # エラー率アラート受信者
+  - name: 'error-rate-alerts'
+    email_configs:
+      - to: 'dev-team@company.com'
+        subject: '📈 HIGH ERROR RATE: PlantUML Editor'
+        body: |
+          📈 エラー率が異常に高くなっています
+          
+          {{ range .Alerts }}
+          エラー率: {{ .Annotations.value }}%
+          閾値: {{ .Annotations.threshold }}%
+          インスタンス: {{ .Labels.instance }}
+          {{ end }}
+
+  # パフォーマンスアラート受信者
+  - name: 'performance-alerts'
+    email_configs:
+      - to: 'dev-team@company.com'
+        subject: '🐌 PERFORMANCE ISSUE: PlantUML Editor'
+        body: |
+          🐌 パフォーマンスの問題が検出されました
+          
+          {{ range .Alerts }}
+          問題: {{ .Annotations.summary }}
+          詳細: {{ .Annotations.description }}
+          値: {{ .Annotations.value }}
+          インスタンス: {{ .Labels.instance }}
+          {{ end }}
+
+# 抑制ルール
+inhibit_rules:
+  # サービス停止時は他のアラートを抑制
+  - source_match:
+      alertname: PlantUMLServiceDown
+    target_match:
+      service: plantuml-editor
+    equal: ['instance']
+    
+  # 重要アラート発生時は警告アラートを抑制
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['instance', 'alertname']
+
+# テンプレート設定
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# グローバル設定
+global:
+  resolve_timeout: 5m
+  http_config:
+    follow_redirects: true
+  smtp_hello: 'localhost'
+  smtp_require_tls: false
+  hipchat_api_url: 'https://api.hipchat.com/'
+  opsgenie_api_url: 'https://api.opsgenie.com/'
+  wechat_api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
+  victorops_api_url: 'https://alert.victorops.com/integrations/generic/20131114/alert/'
+  telegram_api_url: 'https://api.telegram.org'
+  slack_api_url: 'https://slack.com/api/'

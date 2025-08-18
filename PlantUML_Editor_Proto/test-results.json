@@ -1,0 +1,260 @@
+{
+  "config": {
+    "configFile": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\playwright.config.js",
+    "rootDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "testType": "security-e2e",
+      "securityLevel": "enhanced",
+      "validationEngine": "enabled",
+      "cspManager": "enabled",
+      "securityMonitor": "enabled"
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/*.spec.js",
+          "**/*.test.js"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/*.spec.js",
+          "**/*.test.js"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/*.spec.js",
+          "**/*.test.js"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "msedge",
+        "name": "msedge",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/*.spec.js",
+          "**/*.test.js"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "security-chromium",
+        "name": "security-chromium",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/*security*.spec.js"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/*security*.spec.js"
+        ],
+        "testMatch": [
+          "**/*.spec.js",
+          "**/*.test.js"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/d/PlantUML/PlantUML_Editor_Proto/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "security-e2e",
+          "securityLevel": "enhanced",
+          "validationEngine": "enabled",
+          "cspManager": "enabled",
+          "securityMonitor": "enabled"
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "C:/d/PlantUML/PlantUML_Editor_Proto/tests/e2e",
+        "testIgnore": [
+          "**/*security*.spec.js"
+        ],
+        "testMatch": [
+          "**/*.spec.js",
+          "**/*.test.js"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.2",
+    "workers": 8,
+    "webServer": {
+      "command": "npx http-server -p 8086 -c-1 --cors",
+      "url": "http://localhost:8086",
+      "reuseExistingServer": true,
+      "timeout": 180000,
+      "stdout": "pipe",
+      "stderr": "pipe",
+      "env": {
+        "NODE_ENV": "test",
+        "SECURITY_MODE": "enabled",
+        "TEST_ENV": "playwright"
+      }
+    }
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\d\\PlantUML\\PlantUML_Editor_Proto\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.",
+      "stack": "ReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and 'C:\\d\\PlantUML\\PlantUML_Editor_Proto\\package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at C:\\d\\PlantUML\\PlantUML_Editor_Proto\\tests\\e2e\\test-inline-edit-validation.spec.js:1:26",
+      "location": {
+        "file": "C:\\d\\PlantUML\\PlantUML_Editor_Proto\\tests\\e2e\\test-inline-edit-validation.spec.js",
+        "column": 26,
+        "line": 1
+      },
+      "snippet": "\u001b[90m   at \u001b[39mtest-inline-edit-validation.spec.js:1\n\n\u001b[0m\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 1 |\u001b[39m \u001b[36mconst\u001b[39m { test\u001b[33m,\u001b[39m expect } \u001b[33m=\u001b[39m require(\u001b[32m'@playwright/test'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'PlantUML エディタ インライン編集機能検証'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\u001b[0m"
+    },
+    {
+      "message": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments.",
+      "stack": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments."
+    }
+  ],
+  "stats": {
+    "startTime": "2025-08-18T02:47:57.596Z",
+    "duration": 241.95500000000004,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

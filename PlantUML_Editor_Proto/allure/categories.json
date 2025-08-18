@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Product defects",
+    "description": "プロダクト機能に関連する不具合",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*Error.*|.*Exception.*|.*Assertion.*"
+  },
+  {
+    "name": "Test defects", 
+    "description": "テスト実装やセットアップの問題",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*Test.*Error.*|.*Setup.*|.*Teardown.*"
+  },
+  {
+    "name": "Flaky tests",
+    "description": "実行環境に依存する不安定なテスト",
+    "matchedStatuses": ["flaky"],
+    "messageRegex": ".*timeout.*|.*network.*|.*connection.*"
+  },
+  {
+    "name": "Security Issues",
+    "description": "セキュリティ関連の脆弱性や問題",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*XSS.*|.*SQL.*|.*CSRF.*|.*Auth.*|.*injection.*|.*validation.*"
+  },
+  {
+    "name": "Performance Issues",
+    "description": "パフォーマンス要件を満たさない問題",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*timeout.*|.*slow.*|.*performance.*|.*memory.*|.*latency.*"
+  },
+  {
+    "name": "Cross-browser Issues",
+    "description": "特定ブラウザでのみ発生する問題",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*webkit.*|.*firefox.*|.*edge.*|.*browser.*|.*compatibility.*"
+  },
+  {
+    "name": "PlantUML Conversion Issues",
+    "description": "PlantUML変換機能の問題",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*PlantUML.*|.*conversion.*|.*parser.*|.*syntax.*"
+  },
+  {
+    "name": "Japanese Input Issues",
+    "description": "日本語入力処理の問題",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*japanese.*|.*input.*|.*encoding.*|.*character.*"
+  },
+  {
+    "name": "Real-time Sync Issues",
+    "description": "リアルタイム同期機能の問題",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*sync.*|.*realtime.*|.*websocket.*|.*event.*"
+  },
+  {
+    "name": "Docker Environment Issues",
+    "description": "Docker環境固有の問題",
+    "matchedStatuses": ["broken", "failed"],
+    "messageRegex": ".*docker.*|.*container.*|.*volume.*|.*network.*"
+  }
+]

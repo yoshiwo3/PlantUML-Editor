@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>条件分岐・ループ・並行処理 編集機能テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+        .test-section h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .action-list {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            min-height: 100px;
+        }
+        .action-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #e3f2fd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .action-item:hover {
+            background: #bbdefb;
+            transform: translateX(5px);
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        /* モーダルスタイル */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-dialog {
+            background: white;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 条件分岐・ループ・並行処理 編集機能テスト</h1>
+        
+        <div class="status info">
+            <strong>テスト目的:</strong> 既存の処理フローにある条件分岐・ループ・並行処理をクリックして編集できることを確認
+        </div>
+        
+        <!-- テストデータ作成セクション -->
+        <div class="test-section">
+            <h2>1️⃣ テストデータの作成</h2>
+            <p>まず、編集対象となる処理フローを作成します。</p>
+            <div>
+                <button class="btn btn-primary" onclick="addTestCondition()">🔀 条件分岐を追加</button>
+                <button class="btn btn-success" onclick="addTestLoop()">🔁 ループを追加</button>
+                <button class="btn btn-warning" onclick="addTestParallel()">⚡ 並行処理を追加</button>
+            </div>
+            <div class="action-list" id="action-list">
+                <!-- ここに処理フローが表示される -->
+            </div>
+        </div>
+        
+        <!-- 編集機能テストセクション -->
+        <div class="test-section">
+            <h2>2️⃣ 編集機能のテスト</h2>
+            <p>上記の処理フローの項目をクリックして、編集モーダルが開くことを確認してください。</p>
+            <div class="status" id="test-status"></div>
+        </div>
+        
+        <!-- 現在のデータ表示 -->
+        <div class="test-section">
+            <h2>3️⃣ 現在のデータ構造</h2>
+            <pre id="data-display" style="background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+    
+    <!-- 編集モーダル（条件分岐） -->
+    <div class="modal-overlay" id="condition-modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>🔀 条件分岐の編集</h3>
+                <button class="modal-close" onclick="closeModal('condition-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>条件名:</label>
+                    <input type="text" id="condition-name" placeholder="例: 在庫あり">
+                </div>
+                <div class="form-group">
+                    <label>条件タイプ:</label>
+                    <select id="condition-type">
+                        <option value="if-else">if-else</option>
+                        <option value="switch">switch</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveCondition()">保存</button>
+                <button class="btn" onclick="closeModal('condition-modal')">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 編集モーダル（ループ） -->
+    <div class="modal-overlay" id="loop-modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>🔁 ループの編集</h3>
+                <button class="modal-close" onclick="closeModal('loop-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>ループ条件:</label>
+                    <input type="text" id="loop-condition" placeholder="例: 10回繰り返す">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveLoop()">保存</button>
+                <button class="btn" onclick="closeModal('loop-modal')">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 編集モーダル（並行処理） -->
+    <div class="modal-overlay" id="parallel-modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>⚡ 並行処理の編集</h3>
+                <button class="modal-close" onclick="closeModal('parallel-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>ブランチ数:</label>
+                    <input type="number" id="parallel-branches" min="2" max="5" value="2">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveParallel()">保存</button>
+                <button class="btn" onclick="closeModal('parallel-modal')">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // データストア
+        let actions = [];
+        let editingIndex = null;
+        
+        // テスト用条件分岐を追加
+        function addTestCondition() {
+            const action = {
+                type: 'condition',
+                conditionType: 'if-else',
+                conditionName: '在庫あり',
+                trueBranch: [],
+                falseBranch: []
+            };
+            actions.push(action);
+            updateDisplay();
+            updateStatus('条件分岐を追加しました', 'success');
+        }
+        
+        // テスト用ループを追加
+        function addTestLoop() {
+            const action = {
+                type: 'loop',
+                loopCondition: '10回繰り返す',
+                loopActions: []
+            };
+            actions.push(action);
+            updateDisplay();
+            updateStatus('ループを追加しました', 'success');
+        }
+        
+        // テスト用並行処理を追加
+        function addTestParallel() {
+            const action = {
+                type: 'parallel',
+                branches: [[], []]
+            };
+            actions.push(action);
+            updateDisplay();
+            updateStatus('並行処理を追加しました', 'success');
+        }
+        
+        // 表示を更新
+        function updateDisplay() {
+            const list = document.getElementById('action-list');
+            list.innerHTML = '';
+            
+            actions.forEach((action, index) => {
+                const item = document.createElement('div');
+                item.className = 'action-item';
+                item.dataset.index = index;
+                
+                let displayText = '';
+                if (action.type === 'condition') {
+                    displayText = `🔀 条件分岐: ${action.conditionName}`;
+                } else if (action.type === 'loop') {
+                    displayText = `🔁 ループ: ${action.loopCondition}`;
+                } else if (action.type === 'parallel') {
+                    displayText = `⚡ 並行処理: ${action.branches.length}ブランチ`;
+                }
+                
+                item.innerHTML = `
+                    <span>${index + 1}. ${displayText}</span>
+                    <button class="btn" onclick="deleteAction(${index})">削除</button>
+                `;
+                
+                // クリックイベントを追加（ここが重要！）
+                item.addEventListener('click', function(e) {
+                    if (!e.target.classList.contains('btn')) {
+                        editAction(index);
+                    }
+                });
+                
+                list.appendChild(item);
+            });
+            
+            // データ構造を表示
+            document.getElementById('data-display').textContent = JSON.stringify(actions, null, 2);
+        }
+        
+        // アクションを編集
+        function editAction(index) {
+            editingIndex = index;
+            const action = actions[index];
+            
+            updateStatus(`編集モード: ${action.type} (インデックス: ${index})`, 'info');
+            
+            if (action.type === 'condition') {
+                editCondition(index);
+            } else if (action.type === 'loop') {
+                editLoop(index);
+            } else if (action.type === 'parallel') {
+                editParallel(index);
+            }
+        }
+        
+        // 条件分岐を編集
+        function editCondition(index) {
+            const action = actions[index];
+            document.getElementById('condition-name').value = action.conditionName;
+            document.getElementById('condition-type').value = action.conditionType;
+            document.getElementById('condition-modal').classList.add('active');
+            
+            console.log('条件分岐編集モーダルを開きました:', action);
+        }
+        
+        // ループを編集
+        function editLoop(index) {
+            const action = actions[index];
+            document.getElementById('loop-condition').value = action.loopCondition;
+            document.getElementById('loop-modal').classList.add('active');
+            
+            console.log('ループ編集モーダルを開きました:', action);
+        }
+        
+        // 並行処理を編集
+        function editParallel(index) {
+            const action = actions[index];
+            document.getElementById('parallel-branches').value = action.branches.length;
+            document.getElementById('parallel-modal').classList.add('active');
+            
+            console.log('並行処理編集モーダルを開きました:', action);
+        }
+        
+        // 条件分岐を保存
+        function saveCondition() {
+            if (editingIndex !== null) {
+                actions[editingIndex].conditionName = document.getElementById('condition-name').value;
+                actions[editingIndex].conditionType = document.getElementById('condition-type').value;
+                closeModal('condition-modal');
+                updateDisplay();
+                updateStatus('条件分岐を更新しました', 'success');
+            }
+        }
+        
+        // ループを保存
+        function saveLoop() {
+            if (editingIndex !== null) {
+                actions[editingIndex].loopCondition = document.getElementById('loop-condition').value;
+                closeModal('loop-modal');
+                updateDisplay();
+                updateStatus('ループを更新しました', 'success');
+            }
+        }
+        
+        // 並行処理を保存
+        function saveParallel() {
+            if (editingIndex !== null) {
+                const branchCount = parseInt(document.getElementById('parallel-branches').value);
+                const newBranches = [];
+                for (let i = 0; i < branchCount; i++) {
+                    newBranches.push(actions[editingIndex].branches[i] || []);
+                }
+                actions[editingIndex].branches = newBranches;
+                closeModal('parallel-modal');
+                updateDisplay();
+                updateStatus('並行処理を更新しました', 'success');
+            }
+        }
+        
+        // アクションを削除
+        function deleteAction(index) {
+            if (confirm('この項目を削除しますか？')) {
+                actions.splice(index, 1);
+                updateDisplay();
+                updateStatus('項目を削除しました', 'info');
+            }
+        }
+        
+        // モーダルを閉じる
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            editingIndex = null;
+        }
+        
+        // ステータスを更新
+        function updateStatus(message, type) {
+            const status = document.getElementById('test-status');
+            status.className = `status ${type}`;
+            status.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+        }
+        
+        // 初期表示
+        updateDisplay();
+        updateStatus('テスト環境準備完了', 'info');
+    </script>
+</body>
+</html>

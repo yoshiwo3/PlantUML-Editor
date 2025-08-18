@@ -1,0 +1,154 @@
+# PlantUML E2E Test Environment - Optimized Multi-Stage Build
+# Size Target: < 1GB, Startup: < 30 seconds
+# Supports: Chromium, Firefox, WebKit, MSEdge
+
+# Stage 1: Base Dependencies Builder
+FROM node:20.18.0-alpine AS dependencies
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl
+
+# Copy package files only for dependency installation
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 2: Browser Pre-installer (Heavy lifting stage)
+FROM mcr.microsoft.com/playwright:v1.48.0-focal AS browser-installer
+
+# Set minimal environment
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
+
+# Create browser directory with proper permissions
+RUN mkdir -p /opt/browsers && chmod 755 /opt/browsers
+
+# Install all browsers with optimized download
+RUN npx playwright install chromium firefox webkit msedge && \
+    npx playwright install-deps && \
+    mv /root/.cache/ms-playwright/* /opt/browsers/ && \
+    chmod -R 755 /opt/browsers
+
+# Clean up unnecessary files to reduce layer size
+RUN apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache/*
+
+# Stage 3: Final Production Image
+FROM node:20.18.0-bookworm-slim AS production
+
+# Install only essential runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core browser runtime libraries
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libdbus-1-3 libatspi2.0-0 \
+    libx11-6 libxcomposite1 libxdamage1 libxext6 \
+    libxfixes3 libxrandr2 libgbm1 libxcb1 libxkbcommon0 \
+    libpango-1.0-0 libcairo2 libasound2 \
+    # WebKit specific dependencies
+    libwoff1 libopus0 libwebp7 libwebpdemux2 \
+    libenchant-2-2 libgudev-1.0-0 libsecret-1-0 \
+    libhyphen0 libgdk-pixbuf2.0-0 libegl1 libnotify4 \
+    libxslt1.1 libevent-2.1-7 libgles2 libvpx7 \
+    # Essential utilities
+    fonts-liberation libgtk-3-0 libglib2.0-0 \
+    wget ca-certificates curl procps \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create app user for security
+RUN groupadd -r playwright && useradd -r -g playwright -m -d /home/playwright playwright
+
+# Set working directory
+WORKDIR /app
+
+# Copy pre-built dependencies from builder stage
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/package*.json ./
+
+# Copy pre-installed browsers from browser-installer stage
+COPY --from=browser-installer /opt/browsers /opt/browsers
+RUN chown -R playwright:playwright /opt/browsers
+
+# Set optimized environment variables
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV NODE_ENV=test
+ENV DOCKER_ENV=true
+ENV USER=playwright
+ENV HOME=/home/playwright
+
+# Performance optimizations
+ENV NODE_OPTIONS="--max-old-space-size=4096 --max-semi-space-size=128"
+ENV UV_THREADPOOL_SIZE=16
+
+# Copy application files
+COPY --chown=playwright:playwright . .
+
+# Create volume mount points with proper permissions
+RUN mkdir -p test-results screenshots videos && \
+    chown -R playwright:playwright test-results screenshots videos
+
+# Health check script
+COPY <<'EOF' /health-check.js
+const http = require('http');
+const options = {
+  hostname: 'localhost',
+  port: 8086,
+  path: '/health',
+  method: 'GET',
+  timeout: 5000
+};
+
+const req = http.request(options, (res) => {
+  process.exit(res.statusCode === 200 ? 0 : 1);
+});
+
+req.on('error', () => process.exit(1));
+req.on('timeout', () => process.exit(1));
+req.end();
+EOF
+
+RUN chmod +x /health-check.js && chown playwright:playwright /health-check.js
+
+# Browser verification script
+COPY <<'EOF' /verify-browsers.sh
+#!/bin/bash
+echo "==================================="
+echo "PlantUML E2E Browser Verification"
+echo "==================================="
+echo "Node.js: $(node --version)"
+echo "Playwright: $(npx playwright --version)"
+echo ""
+echo "Browser Binaries Check:"
+echo "----------------------"
+echo "Chromium: $(ls -la /opt/browsers/chromium-* 2>/dev/null | wc -l) installation(s)"
+echo "Firefox:  $(ls -la /opt/browsers/firefox-* 2>/dev/null | wc -l) installation(s)"
+echo "WebKit:   $(ls -la /opt/browsers/webkit-* 2>/dev/null | wc -l) installation(s)"
+echo "MSEdge:   $(ls -la /opt/browsers/msedge-* 2>/dev/null | wc -l) installation(s)"
+echo ""
+echo "Total Size: $(du -sh /opt/browsers 2>/dev/null | cut -f1)"
+echo "==================================="
+EOF
+
+RUN chmod +x /verify-browsers.sh && chown playwright:playwright /verify-browsers.sh
+
+# Switch to non-root user
+USER playwright
+
+# Volume mounts for test artifacts
+VOLUME ["/app/test-results", "/app/screenshots", "/app/videos"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node /health-check.js || exit 1
+
+# Expose port for health checks
+EXPOSE 8086
+
+# Default command
+CMD ["/bin/bash", "-c", "/verify-browsers.sh && npm run test:e2e"]

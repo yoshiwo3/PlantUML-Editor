@@ -1,0 +1,293 @@
+# Docker Swarm並列テスト実行設定
+version: '3.8'
+
+services:
+  # テストコーディネーター
+  playwright-manager:
+    image: plantuml-e2e-permanent:latest
+    command: ['npm', 'run', 'test:coordinator']
+    environment:
+      - NODE_ENV=test
+      - PLAYWRIGHT_WORKERS=4
+      - TEST_PARALLELISM=enabled
+      - APP_URL=http://app:8086
+      - RESULTS_PATH=/workspace/test-results
+    networks:
+      - plantuml-test-network
+    volumes:
+      - ./tests:/workspace/tests:ro
+      - test-results:/workspace/test-results:rw
+      - playwright-cache:/ms-playwright:rw
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # テストワーカー群
+  playwright-worker-1:
+    image: plantuml-e2e-permanent:latest
+    command: ['npm', 'run', 'test:worker']
+    environment:
+      - NODE_ENV=test
+      - WORKER_ID=1
+      - WORKER_COUNT=4
+      - APP_URL=http://app:8086
+      - TEST_GROUP=critical
+    networks:
+      - plantuml-test-network
+    volumes:
+      - ./tests:/workspace/tests:ro
+      - test-results:/workspace/test-results:rw
+      - playwright-cache:/ms-playwright:ro
+    depends_on:
+      - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  playwright-worker-2:
+    image: plantuml-e2e-permanent:latest
+    command: ['npm', 'run', 'test:worker']
+    environment:
+      - NODE_ENV=test
+      - WORKER_ID=2
+      - WORKER_COUNT=4
+      - APP_URL=http://app:8086
+      - TEST_GROUP=crossBrowser
+    networks:
+      - plantuml-test-network
+    volumes:
+      - ./tests:/workspace/tests:ro
+      - test-results:/workspace/test-results:rw
+      - playwright-cache:/ms-playwright:ro
+    depends_on:
+      - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+  playwright-worker-3:
+    image: plantuml-e2e-permanent:latest
+    command: ['npm', 'run', 'test:worker']
+    environment:
+      - NODE_ENV=test
+      - WORKER_ID=3
+      - WORKER_COUNT=4
+      - APP_URL=http://app:8086
+      - TEST_GROUP=mobile
+    networks:
+      - plantuml-test-network
+    volumes:
+      - ./tests:/workspace/tests:ro
+      - test-results:/workspace/test-results:rw
+      - playwright-cache:/ms-playwright:ro
+    depends_on:
+      - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+  playwright-worker-4:
+    image: plantuml-e2e-permanent:latest
+    command: ['npm', 'run', 'test:worker']
+    environment:
+      - NODE_ENV=test
+      - WORKER_ID=4
+      - WORKER_COUNT=4
+      - APP_URL=http://app:8086
+      - TEST_GROUP=compatibility
+    networks:
+      - plantuml-test-network
+    volumes:
+      - ./tests:/workspace/tests:ro
+      - test-results:/workspace/test-results:rw
+      - playwright-cache:/ms-playwright:ro
+    depends_on:
+      - app
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+  # アプリケーション
+  app:
+    image: plantuml-editor:latest
+    ports:
+      - "8086:8086"
+    environment:
+      - NODE_ENV=test
+      - LOG_LEVEL=error
+      - ENABLE_CORS=true
+      - TEST_MODE=true
+    networks:
+      - plantuml-test-network
+    volumes:
+      - app-data:/app/data
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 結果集約サービス
+  result-aggregator:
+    image: plantuml-e2e-permanent:latest
+    command: ['npm', 'run', 'aggregate:results']
+    environment:
+      - NODE_ENV=test
+      - RESULTS_PATH=/workspace/test-results
+      - REPORT_FORMAT=html,json,allure
+    networks:
+      - plantuml-test-network
+    volumes:
+      - test-results:/workspace/test-results:rw
+    depends_on:
+      - playwright-manager
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: none
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  # 監視・メトリクス収集
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - plantuml-test-network
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3000:3000"
+    networks:
+      - plantuml-test-network
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  plantuml-test-network:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.9.0/24
+
+volumes:
+  test-results:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./test-results
+  
+  playwright-cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./cache/playwright
+
+  app-data:
+    driver: local
+
+  prometheus-data:
+    driver: local
+
+  grafana-data:
+    driver: local
+
+# 設定とヘルスチェック
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+x-resource-defaults: &resource-defaults
+  limits:
+    cpus: '1'
+    memory: 2G
+  reservations:
+    cpus: '0.5'
+    memory: 1G
