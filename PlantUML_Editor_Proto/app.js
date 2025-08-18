@@ -975,12 +975,6 @@ class PlantUMLEditor {
 
         if (mode === 'actor-action') {
             document.getElementById('actor-action-mode').classList.add('active');
-        } else if (mode === 'inline-edit') {
-            document.getElementById('inline-edit-mode').classList.add('active');
-            // インライン編集モードの初期化
-            if (typeof initInlineEditor === 'function') {
-                initInlineEditor();
-            }
         } else {
             document.getElementById('pattern-mode').classList.add('active');
         }
@@ -1642,6 +1636,20 @@ class PlantUMLEditor {
         
         // プレビューコンテナ
         const previewContainer = document.getElementById('preview-svg');
+        
+        // 空のコードまたは基本的なコードの場合は何も表示しない
+        const trimmedCode = code.trim();
+        if (trimmedCode === '@startuml\n@enduml' || 
+            trimmedCode === '@startuml\n\n@enduml' ||
+            trimmedCode === '') {
+            previewContainer.innerHTML = `
+                <div class="preview-placeholder" style="text-align: center; padding: 50px; color: #999;">
+                    <p style="font-size: 18px;">📝 プレビューエリア</p>
+                    <p style="font-size: 14px;">左側でアクターと処理を追加すると、ここにシーケンス図が表示されます</p>
+                </div>
+            `;
+            return;
+        }
         
         // ローディング表示
         previewContainer.innerHTML = '<p style="text-align: center; padding: 20px;">レンダリング中...</p>';

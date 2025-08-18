@@ -34,9 +34,6 @@
                     <button class="tab-btn" data-mode="pattern">
                         パターン選択
                     </button>
-                    <button class="tab-btn" data-mode="inline-edit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
-                        🎯 インライン編集
-                    </button>
                 </div>
 
                 <!-- アクター＋処理モード -->
@@ -227,34 +224,6 @@
                     </div>
                 </div>
 
-                <!-- インライン編集モード -->
-                <div id="inline-edit-mode" class="mode-content">
-                    <div class="inline-editor-container">
-                        <!-- ツールバー -->
-                        <div class="inline-toolbar">
-                            <button class="inline-btn inline-btn-primary" onclick="addInlineAction()">
-                                ➕ アクション追加
-                            </button>
-                            <button class="inline-btn inline-btn-success" onclick="addInlineConditionBlock()">
-                                🔀 条件分岐
-                            </button>
-                            <button class="inline-btn inline-btn-success" onclick="addInlineLoopBlock()">
-                                🔁 ループ
-                            </button>
-                            <button class="inline-btn inline-btn-success" onclick="addInlineParallelBlock()">
-                                ⚡ 並行処理
-                            </button>
-                            <button class="inline-btn inline-btn-warning" onclick="clearInlineAll()">
-                                🗑️ クリア
-                            </button>
-                        </div>
-
-                        <!-- アクションコンテナ -->
-                        <div class="inline-actions-container" id="inline-actions-container">
-                            <!-- 7要素アクション構造がここに動的に追加される -->
-                        </div>
-                    </div>
-                </div>
 
                 <!-- パターン選択モード -->
                 <div id="pattern-mode" class="mode-content">
@@ -1315,8 +1284,6 @@ end ref</pre>
     -->
     
     <script src="drawio-converter.js"></script>
-    <!-- インライン編集機能 -->
-    <script src="inline-editor.js?v=20250818115700"></script>
     <!-- キャッシュバスティング対策: タイムスタンプパラメータ追加 -->
     <script src="app.js?v=20250817123000"></script>
 </body>
