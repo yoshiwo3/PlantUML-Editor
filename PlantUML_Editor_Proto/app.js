@@ -810,11 +810,18 @@ class PlantUMLEditor {
             });
         });
 
-        // カスタムアクター追加ボタン
-        const addCustomBtn = document.querySelector('.add-custom');
-        if (addCustomBtn) {
-            addCustomBtn.addEventListener('click', () => {
+        // 新しい追加・削除ボタンのイベントリスナー
+        const addActorBtn = document.getElementById('btn-add-actor');
+        if (addActorBtn) {
+            addActorBtn.addEventListener('click', () => {
                 this.showCustomActorModal();
+            });
+        }
+
+        const deleteActorBtn = document.getElementById('btn-delete-actor');
+        if (deleteActorBtn) {
+            deleteActorBtn.addEventListener('click', () => {
+                this.showDeleteActorModal();
             });
         }
 
@@ -1000,35 +1007,15 @@ class PlantUMLEditor {
     }
 
     updateSelectedActorsDisplay() {
-        const container = document.querySelector('.actor-chips');
-        container.innerHTML = '';
-
-        // コードパネルのアクター表示も更新
+        // 選択中のアクター表示エリアを削除したので、コードパネルの更新のみ行う
         const codePanelActors = document.getElementById('code-panel-actors');
+        if (!codePanelActors) return; // コードパネルがない場合はスキップ
         
         if (this.selectedActors.size === 0) {
-            container.innerHTML = '<span style="color: #999; font-size: 12px;">アクターが選択されていません</span>';
             codePanelActors.textContent = '未選択';
             codePanelActors.style.color = '#999';
             return;
         }
-
-        // エディターパネルのチップ表示
-        this.selectedActors.forEach(actor => {
-            const chip = document.createElement('div');
-            chip.className = 'actor-chip';
-            chip.innerHTML = `
-                ${actor}
-                <span class="remove" data-actor="${actor}">×</span>
-            `;
-            
-            chip.querySelector('.remove').addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.removeActor(e.target.dataset.actor);
-            });
-
-            container.appendChild(chip);
-        });
 
         // コードパネルのアクター表示を更新
         const actorNames = Array.from(this.selectedActors);
@@ -3318,6 +3305,78 @@ class PlantUMLEditor {
         };
     }
 
+    showDeleteActorModal() {
+        if (this.selectedActors.size === 0) {
+            this.showStatus('⚠️ 削除するアクターが選択されていません', 'error');
+            return;
+        }
+
+        // 簡易的な確認ダイアログを使用
+        const actorsList = Array.from(this.selectedActors).join(', ');
+        const confirmed = confirm(`以下のアクターを削除しますか？\n\n${actorsList}\n\n注意: 関連する処理も削除されます`);
+        
+        if (confirmed) {
+            // 選択中のアクターをすべて削除
+            const actorsToDelete = Array.from(this.selectedActors);
+            actorsToDelete.forEach(actor => {
+                this.deleteActor(actor);
+            });
+            
+            this.showStatus(`✅ ${actorsToDelete.length}個のアクターを削除しました`, 'success');
+        }
+    }
+
+    deleteActor(actorName) {
+        // アクターを選択から削除
+        this.selectedActors.delete(actorName);
+        
+        // UIからボタンを削除（カスタムアクターのみ）
+        const customButton = document.querySelector(`.actor-btn[data-actor="${actorName}"]`);
+        if (customButton && !this.isDefaultActor(actorName)) {
+            customButton.remove();
+        } else if (customButton) {
+            // デフォルトアクターの場合は選択解除のみ
+            customButton.classList.remove('selected');
+        }
+        
+        // 関連する処理を削除
+        this.actions = this.actions.filter(action => {
+            if (action.type === 'message') {
+                return action.from !== actorName && action.to !== actorName;
+            } else if (action.type === 'condition' || action.type === 'loop' || action.type === 'parallel') {
+                // 条件分岐などの中のアクションもチェック
+                if (action.trueBranch) {
+                    action.trueBranch = action.trueBranch.filter(a => 
+                        a.from !== actorName && a.to !== actorName
+                    );
+                }
+                if (action.falseBranch) {
+                    action.falseBranch = action.falseBranch.filter(a => 
+                        a.from !== actorName && a.to !== actorName
+                    );
+                }
+                if (action.actions) {
+                    action.actions = action.actions.filter(a => 
+                        a.from !== actorName && a.to !== actorName
+                    );
+                }
+                return true; // 条件自体は保持
+            }
+            return true;
+        });
+        
+        // UIを更新
+        this.updateSelectedActorsDisplay();
+        this.updateActorSelects();
+        this.updateActionList();
+        this.updatePlantUML();
+    }
+
+    isDefaultActor(actorName) {
+        const defaultActors = ['ユーザー', 'システム', 'データベース', '外部API', '管理者', '決済サービス', '配送業者'];
+        return defaultActors.includes(actorName);
+    }
+
     addCustomActor(name) {
         // 既に存在する場合はスキップ
         if (this.selectedActors.has(name)) {
@@ -3330,7 +3389,6 @@ class PlantUMLEditor {
 
         // UIに新しいアクターボタンを追加
         const grid = document.querySelector('.actor-grid');
-        const addButton = grid.querySelector('.add-custom');
         
         const newButton = document.createElement('button');
         newButton.className = 'actor-btn selected';
@@ -3344,7 +3402,7 @@ class PlantUMLEditor {
             this.toggleActor(name, newButton);
         });
 
-        grid.insertBefore(newButton, addButton);
+        grid.appendChild(newButton);
         
         // 選択状態にする
         this.selectedActors.add(name);
@@ -3986,7 +4044,6 @@ EC --> Customer: 確認メール
     addCustomActorSilently(name) {
         // UIに新しいアクターボタンを追加（通知なし）
         const grid = document.querySelector('.actor-grid');
-        const addButton = grid.querySelector('.add-custom');
         
         // 既に存在する場合はスキップ
         if (document.querySelector(`.actor-btn[data-actor="${name}"]`)) {
@@ -4005,7 +4062,7 @@ EC --> Customer: 確認メール
             this.toggleActor(name, newButton);
         });
 
-        grid.insertBefore(newButton, addButton);
+        grid.appendChild(newButton);
     }
 
     /**
