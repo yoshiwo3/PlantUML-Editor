@@ -810,10 +810,14 @@ class PlantUMLEditor {
             });
         });
 
-        // カスタムアクター追加ボタン
-        document.querySelector('.add-custom').addEventListener('click', () => {
-            this.showCustomActorModal();
-        });
+        // カスタムアクター追加ボタン（非表示設定を追加）
+        const addCustomBtn = document.querySelector('.add-custom');
+        if (addCustomBtn) {
+            addCustomBtn.style.display = 'none';  // ボタンを非表示にする
+            addCustomBtn.addEventListener('click', () => {
+                this.showCustomActorModal();
+            });
+        }
 
         // 処理タイプタブの切り替え
         document.querySelectorAll('.action-type-btn').forEach(btn => {
@@ -1639,8 +1643,9 @@ class PlantUMLEditor {
         
         // 空のコードまたは基本的なコードの場合は何も表示しない
         const trimmedCode = code.trim();
-        if (trimmedCode === '@startuml\n@enduml' || 
-            trimmedCode === '@startuml\n\n@enduml' ||
+        const normalizedCode = trimmedCode.replace(/\s+/g, '');
+        if (normalizedCode === '@startuml@enduml' || 
+            normalizedCode === '' ||
             trimmedCode === '') {
             previewContainer.innerHTML = `
                 <div class="preview-placeholder" style="text-align: center; padding: 50px; color: #999;">
