@@ -1,0 +1,12 @@
+@startuml
+title インライン編集によるシーケンス図
+
+participant Alice
+participant Bob
+
+Alice -> Bob: メッセージ
+Alice -> Bob: メッセージ
+alt ユーザー認証済み
+else 条件不成立
+end
+@enduml

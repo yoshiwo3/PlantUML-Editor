@@ -45,6 +45,10 @@ class PlantUMLEditor {
         this.stateManager = null;
         this.useModularParser = false;
         
+        // アクターマスタ管理
+        this.actorMasterManager = null;
+        this.actorMasterMaintenanceUI = null;
+        
         // Phase 3: 高度な双方向同期システム
         this.realtimeSyncManager = null;
         this.diffCalculator = null;
@@ -94,6 +98,9 @@ class PlantUMLEditor {
         // Phase 2改善版: モジュール化されたパーサーと状態管理の初期化
         this.initializeModularComponents();
         
+        // アクターマスタ管理の初期化
+        await this.initializeActorMaster();
+        
         // Phase 3モジュールの読み込み
         // フリーズ問題のため一時的に無効化 - 2025-08-13
         console.warn('[PlantUMLEditor] Phase 3システムの初期化を一時的にスキップ（フリーズ問題対応）');
@@ -104,6 +111,65 @@ class PlantUMLEditor {
         this.setupPanelResize();
         this.updatePlantUML();
         this.updateLineNumbers();
+    }
+    
+    /**
+     * アクターマスタ管理の初期化
+     */
+    async initializeActorMaster() {
+        try {
+            if (typeof ActorMasterManager !== 'undefined') {
+                this.actorMasterManager = new ActorMasterManager();
+                
+                // マスタデータの読み込み
+                const loaded = await this.actorMasterManager.loadMasterData();
+                
+                if (loaded) {
+                    console.log('[PlantUMLEditor] ActorMasterManagerを初期化しました');
+                    
+                    // アクターグリッドを動的に生成
+                    this.generateActorGrid();
+                    
+                    // メンテナンスUIを初期化
+                    if (typeof ActorMasterMaintenanceUI !== 'undefined') {
+                        this.actorMasterMaintenanceUI = new ActorMasterMaintenanceUI(this.actorMasterManager);
+                        console.log('[PlantUMLEditor] ActorMasterMaintenanceUIを初期化しました');
+                    }
+                } else {
+                    console.warn('[PlantUMLEditor] マスタデータの読み込みに失敗、フォールバックを使用');
+                    this.generateActorGrid();
+                }
+            } else {
+                console.warn('[PlantUMLEditor] ActorMasterManagerが利用できません');
+            }
+        } catch (error) {
+            console.error('[PlantUMLEditor] ActorMasterManagerの初期化エラー:', error);
+        }
+    }
+    
+    /**
+     * アクターグリッドの動的生成
+     */
+    generateActorGrid() {
+        const grid = document.querySelector('.actor-grid');
+        if (!grid || !this.actorMasterManager) return;
+        
+        // 既存のボタンをクリア（追加・削除ボタンは残す）
+        const existingButtons = grid.querySelectorAll('.actor-btn');
+        existingButtons.forEach(btn => btn.remove());
+        
+        // マスタからアクターボタンを生成
+        const html = this.actorMasterManager.generateActorGridHTML();
+        grid.innerHTML = html;
+        
+        // イベントリスナーを再設定
+        grid.querySelectorAll('.actor-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.toggleActor(btn.dataset.actor, btn);
+            });
+        });
+        
+        console.log('[PlantUMLEditor] アクターグリッドを生成しました');
     }
     
     /**
@@ -317,10 +383,11 @@ class PlantUMLEditor {
         const settingsBtn = document.querySelector('.btn-settings');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => {
-                const modal = document.getElementById('phase3-settings-modal');
-                if (modal) {
-                    modal.style.display = 'flex';
-                    this.updateSyncStatus();
+                // アクターマスタメンテナンスUIを表示
+                if (this.actorMasterMaintenanceUI) {
+                    this.actorMasterMaintenanceUI.show();
+                } else {
+                    console.warn('[PlantUMLApp] ActorMasterMaintenanceUI is not initialized');
                 }
             });
         }
@@ -810,10 +877,20 @@ class PlantUMLEditor {
             });
         });
 
-        // カスタムアクター追加ボタン
-        document.querySelector('.add-custom').addEventListener('click', () => {
-            this.showCustomActorModal();
-        });
+        // 新しい追加・削除ボタンのイベントリスナー
+        const addActorBtn = document.getElementById('btn-add-actor');
+        if (addActorBtn) {
+            addActorBtn.addEventListener('click', () => {
+                this.showCustomActorModal();
+            });
+        }
+
+        const deleteActorBtn = document.getElementById('btn-delete-actor');
+        if (deleteActorBtn) {
+            deleteActorBtn.addEventListener('click', () => {
+                this.showDeleteActorModal();
+            });
+        }
 
         // 処理タイプタブの切り替え
         document.querySelectorAll('.action-type-btn').forEach(btn => {
@@ -997,35 +1074,15 @@ class PlantUMLEditor {
     }
 
     updateSelectedActorsDisplay() {
-        const container = document.querySelector('.actor-chips');
-        container.innerHTML = '';
-
-        // コードパネルのアクター表示も更新
+        // 選択中のアクター表示エリアを削除したので、コードパネルの更新のみ行う
         const codePanelActors = document.getElementById('code-panel-actors');
+        if (!codePanelActors) return; // コードパネルがない場合はスキップ
         
         if (this.selectedActors.size === 0) {
-            container.innerHTML = '<span style="color: #999; font-size: 12px;">アクターが選択されていません</span>';
             codePanelActors.textContent = '未選択';
             codePanelActors.style.color = '#999';
             return;
         }
-
-        // エディターパネルのチップ表示
-        this.selectedActors.forEach(actor => {
-            const chip = document.createElement('div');
-            chip.className = 'actor-chip';
-            chip.innerHTML = `
-                ${actor}
-                <span class="remove" data-actor="${actor}">×</span>
-            `;
-            
-            chip.querySelector('.remove').addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.removeActor(e.target.dataset.actor);
-            });
-
-            container.appendChild(chip);
-        });
 
         // コードパネルのアクター表示を更新
         const actorNames = Array.from(this.selectedActors);
@@ -1636,6 +1693,21 @@ class PlantUMLEditor {
         
         // プレビューコンテナ
         const previewContainer = document.getElementById('preview-svg');
+        
+        // 空のコードまたは基本的なコードの場合は何も表示しない
+        const trimmedCode = code.trim();
+        const normalizedCode = trimmedCode.replace(/\s+/g, '');
+        if (normalizedCode === '@startuml@enduml' || 
+            normalizedCode === '' ||
+            trimmedCode === '') {
+            previewContainer.innerHTML = `
+                <div class="preview-placeholder" style="text-align: center; padding: 50px; color: #999;">
+                    <p style="font-size: 18px;">📝 プレビューエリア</p>
+                    <p style="font-size: 14px;">左側でアクターと処理を追加すると、ここにシーケンス図が表示されます</p>
+                </div>
+            `;
+            return;
+        }
         
         // ローディング表示
         previewContainer.innerHTML = '<p style="text-align: center; padding: 20px;">レンダリング中...</p>';
@@ -3300,6 +3372,78 @@ class PlantUMLEditor {
         };
     }
 
+    showDeleteActorModal() {
+        if (this.selectedActors.size === 0) {
+            this.showStatus('⚠️ 削除するアクターが選択されていません', 'error');
+            return;
+        }
+
+        // 簡易的な確認ダイアログを使用
+        const actorsList = Array.from(this.selectedActors).join(', ');
+        const confirmed = confirm(`以下のアクターを削除しますか？\n\n${actorsList}\n\n注意: 関連する処理も削除されます`);
+        
+        if (confirmed) {
+            // 選択中のアクターをすべて削除
+            const actorsToDelete = Array.from(this.selectedActors);
+            actorsToDelete.forEach(actor => {
+                this.deleteActor(actor);
+            });
+            
+            this.showStatus(`✅ ${actorsToDelete.length}個のアクターを削除しました`, 'success');
+        }
+    }
+
+    deleteActor(actorName) {
+        // アクターを選択から削除
+        this.selectedActors.delete(actorName);
+        
+        // UIからボタンを削除（カスタムアクターのみ）
+        const customButton = document.querySelector(`.actor-btn[data-actor="${actorName}"]`);
+        if (customButton && !this.isDefaultActor(actorName)) {
+            customButton.remove();
+        } else if (customButton) {
+            // デフォルトアクターの場合は選択解除のみ
+            customButton.classList.remove('selected');
+        }
+        
+        // 関連する処理を削除
+        this.actions = this.actions.filter(action => {
+            if (action.type === 'message') {
+                return action.from !== actorName && action.to !== actorName;
+            } else if (action.type === 'condition' || action.type === 'loop' || action.type === 'parallel') {
+                // 条件分岐などの中のアクションもチェック
+                if (action.trueBranch) {
+                    action.trueBranch = action.trueBranch.filter(a => 
+                        a.from !== actorName && a.to !== actorName
+                    );
+                }
+                if (action.falseBranch) {
+                    action.falseBranch = action.falseBranch.filter(a => 
+                        a.from !== actorName && a.to !== actorName
+                    );
+                }
+                if (action.actions) {
+                    action.actions = action.actions.filter(a => 
+                        a.from !== actorName && a.to !== actorName
+                    );
+                }
+                return true; // 条件自体は保持
+            }
+            return true;
+        });
+        
+        // UIを更新
+        this.updateSelectedActorsDisplay();
+        this.updateActorSelects();
+        this.updateActionList();
+        this.updatePlantUML();
+    }
+
+    isDefaultActor(actorName) {
+        const defaultActors = ['ユーザー', 'システム', 'データベース', '外部API', '管理者', '決済サービス', '配送業者'];
+        return defaultActors.includes(actorName);
+    }
+
     addCustomActor(name) {
         // 既に存在する場合はスキップ
         if (this.selectedActors.has(name)) {
@@ -3312,7 +3456,6 @@ class PlantUMLEditor {
 
         // UIに新しいアクターボタンを追加
         const grid = document.querySelector('.actor-grid');
-        const addButton = grid.querySelector('.add-custom');
         
         const newButton = document.createElement('button');
         newButton.className = 'actor-btn selected';
@@ -3326,7 +3469,7 @@ class PlantUMLEditor {
             this.toggleActor(name, newButton);
         });
 
-        grid.insertBefore(newButton, addButton);
+        grid.appendChild(newButton);
         
         // 選択状態にする
         this.selectedActors.add(name);
@@ -3388,25 +3531,97 @@ class PlantUMLEditor {
 
     // draw.io エクスポート機能
     exportToDrawIO() {
-        const actors = Array.from(this.selectedActors);
-        const actions = this.actions;
+        // PlantUMLコードを取得
+        const plantUmlTextarea = document.getElementById('plantuml-code');
+        const plantUmlCode = plantUmlTextarea ? plantUmlTextarea.value : '';
         
-        if (actors.length === 0 || actions.length === 0) {
-            this.showStatus('エクスポートする内容がありません', 'warning');
-            return;
-        }
-        
-        try {
-            const converter = new SequenceDiagramToDrawIO();
-            converter.initialize(actors, actions);
-            const url = converter.generateDrawIOUrl();
+        if (plantUmlCode && plantUmlCode.trim() !== '' && plantUmlCode.trim() !== '@startuml\n@enduml') {
+            // PlantUMLコードをdraw.ioで開く（XML埋め込み方式）
+            try {
+                // draw.io XMLフォーマットでPlantUMLを埋め込む
+                const timestamp = new Date().toISOString();
+                
+                // XMLエスケープ処理
+                const escapedPlantUml = plantUmlCode
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&apos;');
+                
+                // draw.io XMLドキュメントを作成
+                const drawioXml = `<mxfile host="app.diagrams.net" modified="${timestamp}" agent="PlantUML-Editor" version="21.6.5" type="device">
+  <diagram name="PlantUML Diagram" id="plantuml-${Date.now()}">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="${escapedPlantUml}" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontFamily=Courier New;fontSize=11;spacing=2;spacingTop=6;spacingLeft=4;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="700" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="PlantUML Code (draw.io内でEdit → Edit Data でPlantUMLプラグインを使用できます)" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="700" height="25" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>`;
+                
+                // XMLをBase64エンコード
+                const encodedXml = btoa(unescape(encodeURIComponent(drawioXml)));
+                
+                // draw.ioを開く（#RパラメータでXMLをインポート）
+                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark&title=PlantUML%20Diagram.drawio#R${encodedXml}`;
+                
+                // 新しいタブで開く
+                window.open(drawioUrl, '_blank');
+                this.showStatus('draw.ioでPlantUMLダイアグラムを開きました');
+            } catch (error) {
+                console.error('draw.ioエクスポートエラー:', error);
+                // Pakoが利用できない場合は、シンプルな方法を試す
+                try {
+                    // PlantUMLコードをBase64エンコード（非圧縮）
+                    const encoded = btoa(unescape(encodeURIComponent(plantUmlCode)));
+                    
+                    // draw.ioを開いて、手動でPlantUMLコードをインポートする案内
+                    const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark`;
+                    
+                    // PlantUMLコードをクリップボードにコピー
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(plantUmlCode).then(() => {
+                            this.showStatus('PlantUMLコードをコピーしました。draw.ioで「Arrange > Insert > Advanced > PlantUML」からペーストしてください', 'info');
+                        });
+                    }
+                    
+                    // 新しいタブで開く
+                    window.open(drawioUrl, '_blank');
+                } catch (fallbackError) {
+                    console.error('フォールバックエラー:', fallbackError);
+                    this.showStatus('エクスポートに失敗しました', 'error');
+                }
+            }
+        } else {
+            // PlantUMLコードがない場合は、アクター+処理モードのデータを使用
+            const actors = Array.from(this.selectedActors);
+            const actions = this.actions;
             
-            // 新しいタブで開く
-            window.open(url, '_blank');
-            this.showStatus('draw.ioで開きました');
-        } catch (error) {
-            console.error('draw.ioエクスポートエラー:', error);
-            this.showStatus('エクスポートに失敗しました', 'error');
+            if (actors.length === 0 || actions.length === 0) {
+                this.showStatus('エクスポートする内容がありません', 'warning');
+                return;
+            }
+            
+            try {
+                const converter = new SequenceDiagramToDrawIO();
+                converter.initialize(actors, actions);
+                const url = converter.generateDrawIOUrl();
+                
+                // 新しいタブで開く
+                window.open(url, '_blank');
+                this.showStatus('draw.ioで開きました');
+            } catch (error) {
+                console.error('draw.ioエクスポートエラー:', error);
+                this.showStatus('エクスポートに失敗しました', 'error');
+            }
         }
     }
 
@@ -3968,7 +4183,6 @@ EC --> Customer: 確認メール
     addCustomActorSilently(name) {
         // UIに新しいアクターボタンを追加（通知なし）
         const grid = document.querySelector('.actor-grid');
-        const addButton = grid.querySelector('.add-custom');
         
         // 既に存在する場合はスキップ
         if (document.querySelector(`.actor-btn[data-actor="${name}"]`)) {
@@ -3987,7 +4201,7 @@ EC --> Customer: 確認メール
             this.toggleActor(name, newButton);
         });
 
-        grid.insertBefore(newButton, addButton);
+        grid.appendChild(newButton);
     }
 
     /**
@@ -4060,6 +4274,191 @@ EC --> Customer: 確認メール
         return true;
     }
 
+    // インライン編集用の補助関数
+    createEditableActionItem(action, branchType, branchIndex, actionIndex) {
+        const actors = this.getCurrentActors();
+        const isUncertain = action.uncertain || false;
+        
+        return `
+            <div class="action-item-inline" data-branch="${branchType}" data-branch-index="${branchIndex}" data-action-index="${actionIndex}">
+                <span class="drag-handle">☰</span>
+                <select class="actor-select-inline from-actor" onchange="window.editor.updateActionField('${branchType}', ${branchIndex}, ${actionIndex}, 'from', this.value)">
+                    ${actors.map(actor => 
+                        `<option value="${actor}" ${action.from === actor ? 'selected' : ''}>${actor}</option>`
+                    ).join('')}
+                </select>
+                <select class="arrow-type-inline" onchange="window.editor.updateActionField('${branchType}', ${branchIndex}, ${actionIndex}, 'async', this.value === 'async')">
+                    <option value="sync" ${!action.async ? 'selected' : ''}>→</option>
+                    <option value="async" ${action.async ? 'selected' : ''}>⇢</option>
+                    <option value="return" ${action.return ? 'selected' : ''}>⟵</option>
+                    <option value="async-return" ${action.async && action.return ? 'selected' : ''}>⟸</option>
+                </select>
+                <select class="actor-select-inline to-actor" onchange="window.editor.updateActionField('${branchType}', ${branchIndex}, ${actionIndex}, 'to', this.value)">
+                    ${actors.map(actor => 
+                        `<option value="${actor}" ${action.to === actor ? 'selected' : ''}>${actor}</option>`
+                    ).join('')}
+                </select>
+                <input type="text" class="message-input-inline" value="${action.text || ''}" 
+                    onchange="window.editor.updateActionField('${branchType}', ${branchIndex}, ${actionIndex}, 'text', this.value)"
+                    placeholder="メッセージ">
+                <div class="action-buttons-inline">
+                    <button class="btn-inline delete" onclick="window.editor.deleteActionFromBranch('${branchType}', ${branchIndex}, ${actionIndex})" title="削除">🗑️</button>
+                    <button class="btn-inline question ${isUncertain ? 'active' : ''}" 
+                        onclick="window.editor.toggleActionUncertain('${branchType}', ${branchIndex}, ${actionIndex}, this)" 
+                        title="条件確認">？</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // アクションフィールド更新
+    updateActionField(branchType, branchIndex, actionIndex, field, value) {
+        // 'true'/'false'を'condition'として処理
+        if (branchType === 'condition' || branchType === 'true' || branchType === 'false') {
+            if (branchType === 'true' || branchIndex === 0) { // TRUE branch
+                if (this.tempConditionData.trueBranch[actionIndex]) {
+                    this.tempConditionData.trueBranch[actionIndex][field] = value;
+                }
+            } else if (branchType === 'false' || branchIndex === 1) { // FALSE branch
+                if (this.tempConditionData.falseBranch[actionIndex]) {
+                    this.tempConditionData.falseBranch[actionIndex][field] = value;
+                }
+            }
+        } else if (branchType === 'loop') {
+            if (this.tempLoopData.actions[actionIndex]) {
+                this.tempLoopData.actions[actionIndex][field] = value;
+            }
+        } else if (branchType === 'parallel') {
+            if (this.tempParallelData.branches[branchIndex] && 
+                this.tempParallelData.branches[branchIndex][actionIndex]) {
+                this.tempParallelData.branches[branchIndex][actionIndex][field] = value;
+            }
+        }
+    }
+
+    // アクションの不確実性トグル
+    toggleActionUncertain(branchType, branchIndex, actionIndex, button) {
+        const isActive = button.classList.contains('active');
+        button.classList.toggle('active');
+        
+        this.updateActionField(branchType, branchIndex, actionIndex, 'uncertain', !isActive);
+    }
+
+    // ブランチからアクション削除
+    deleteActionFromBranch(branchType, branchIndex, actionIndex) {
+        if (!confirm('このアクションを削除しますか？')) return;
+        
+        // 'true'/'false'を'condition'として処理
+        if (branchType === 'condition' || branchType === 'true' || branchType === 'false') {
+            if (branchType === 'true' || branchIndex === 0) {
+                this.tempConditionData.trueBranch.splice(actionIndex, 1);
+            } else if (branchType === 'false' || branchIndex === 1) {
+                this.tempConditionData.falseBranch.splice(actionIndex, 1);
+            }
+            this.refreshConditionModal();
+        } else if (branchType === 'loop') {
+            this.tempLoopData.actions.splice(actionIndex, 1);
+            this.refreshLoopModal();
+        } else if (branchType === 'parallel') {
+            this.tempParallelData.branches[branchIndex].splice(actionIndex, 1);
+            this.refreshParallelModal();
+        }
+    }
+
+    // ブランチにアクション追加
+    addActionToBranch(branchType, branchIndex) {
+        const actors = this.getCurrentActors();
+        
+        // アクターが空の場合、デフォルトを使用
+        if (actors.length === 0) {
+            this.selectedActors.add('ユーザー');
+            this.selectedActors.add('システム');
+            actors.push('ユーザー', 'システム');
+        }
+        
+        const newAction = {
+            from: actors[0] || 'ユーザー',
+            to: actors[1] || 'システム',
+            text: '新しいアクション',
+            async: false,
+            uncertain: false
+        };
+        
+        // 'condition'タイプの処理：branchIndexで分岐を決定
+        if (branchType === 'condition') {
+            if (branchIndex === 0) {
+                this.tempConditionData.trueBranch.push(newAction);
+            } else if (branchIndex === 1) {
+                this.tempConditionData.falseBranch.push(newAction);
+            }
+            this.refreshConditionModal();
+        } else if (branchType === 'loop') {
+            this.tempLoopData.actions.push(newAction);
+            this.refreshLoopModal();
+        } else if (branchType === 'parallel') {
+            if (!this.tempParallelData.branches[branchIndex]) {
+                this.tempParallelData.branches[branchIndex] = [];
+            }
+            this.tempParallelData.branches[branchIndex].push(newAction);
+            this.refreshParallelModal();
+        }
+    }
+
+    // モーダル再描画用関数
+    refreshConditionModal() {
+        const modal = document.getElementById('editModal');
+        if (modal && this.editingConditionIndex !== null) {
+            // モーダルのコンテンツ部分だけ更新
+            const trueBranchDiv = modal.querySelector('[data-branch-type="true"]');
+            const falseBranchDiv = modal.querySelector('[data-branch-type="false"]');
+            
+            if (trueBranchDiv) {
+                trueBranchDiv.innerHTML = this.renderBranchActions('true', 0, this.tempConditionData.trueBranch);
+            }
+            if (falseBranchDiv) {
+                falseBranchDiv.innerHTML = this.renderBranchActions('false', 1, this.tempConditionData.falseBranch);
+            }
+        }
+    }
+
+    refreshLoopModal() {
+        const modal = document.getElementById('editModal');
+        if (modal && this.editingLoopIndex !== null) {
+            const actionsDiv = modal.querySelector('[data-loop-actions]');
+            if (actionsDiv) {
+                actionsDiv.innerHTML = this.renderBranchActions('loop', 0, this.tempLoopData.actions);
+            }
+        }
+    }
+
+    refreshParallelModal() {
+        const modal = document.getElementById('editModal');
+        if (modal && this.editingParallelIndex !== null) {
+            this.tempParallelData.branches.forEach((branch, index) => {
+                const branchDiv = modal.querySelector(`[data-parallel-branch="${index}"]`);
+                if (branchDiv) {
+                    branchDiv.innerHTML = this.renderBranchActions('parallel', index, branch);
+                }
+            });
+        }
+    }
+
+    // ブランチアクションのレンダリング
+    renderBranchActions(type, branchIndex, actions) {
+        // 'true'/'false'を'condition'に正規化してonclickに渡す
+        const normalizedType = (type === 'true' || type === 'false') ? 'condition' : type;
+        
+        return `
+            ${actions.map((action, actionIndex) => 
+                this.createEditableActionItem(action, type, branchIndex, actionIndex)
+            ).join('')}
+            <button class="btn-add-action-inline" onclick="window.editor.addActionToBranch('${normalizedType}', ${branchIndex})">
+                <span>➕</span>
+                <span>アクション追加</span>
+            </button>
+        `;
+    }
+
     // 条件分岐編集機能
     editCondition(index) {
         const action = this.actions[index];
@@ -4079,39 +4478,41 @@ EC --> Customer: 確認メール
     showConditionEditModal(action) {
         // モーダルオーバーレイの作成
         const modal = document.createElement('div');
+        modal.id = 'editModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-dialog condition-edit-modal" style="max-width: 800px;">
-                <div class="modal-header">
-                    <h3>🔀 条件分岐の編集</h3>
+            <div class="modal-dialog condition-edit-modal" style="width: 900px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header" style="flex-shrink: 0; padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">🔀 条件分岐の編集</h3>
                     <button class="modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
                 </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">条件名:</label>
-                        <input type="text" id="edit-condition-name" value="${action.conditionName || ''}" 
-                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <div class="modal-body" style="flex: 1; padding: 20px; overflow-y: auto; max-height: calc(90vh - 140px);">
+                    <div class="form-group" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #333;">条件名:</label>
+                            <input type="text" id="edit-condition-name" value="${action.conditionName || ''}" 
+                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #333;">条件タイプ:</label>
+                            <select id="edit-condition-type" style="width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="if-else" ${action.conditionType === 'if-else' ? 'selected' : ''}>if-else</option>
+                                <option value="switch" ${action.conditionType === 'switch' ? 'selected' : ''}>switch</option>
+                            </select>
+                        </div>
                     </div>
                     
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">条件タイプ:</label>
-                        <select id="edit-condition-type" style="width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="if-else" ${action.conditionType === 'if-else' ? 'selected' : ''}>if-else</option>
-                            <option value="switch" ${action.conditionType === 'switch' ? 'selected' : ''}>switch</option>
-                        </select>
-                    </div>
-                    
-                    <div class="branch-section" style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px;">
-                        <h4 style="margin-bottom: 10px; color: #28a745;">✅ 真の場合</h4>
+                    <div class="branch-section" style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; background: white;">
+                        <h4 style="margin-bottom: 10px; color: #28a745; font-size: 16px;">✅ 真の場合</h4>
                         <div id="edit-true-branch" style="min-height: 50px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;"></div>
                     </div>
                     
-                    <div class="branch-section" style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px;">
-                        <h4 style="margin-bottom: 10px; color: #dc3545;">❌ 偽の場合</h4>
+                    <div class="branch-section" style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; background: white;">
+                        <h4 style="margin-bottom: 10px; color: #dc3545; font-size: 16px;">❌ 偽の場合</h4>
                         <div id="edit-false-branch" style="min-height: 50px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;"></div>
                     </div>
                 </div>
-                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right;">
+                <div class="modal-footer" style="flex-shrink: 0; padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right; background: white;">
                     <button class="btn-save-condition" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">✓ 保存</button>
                     <button class="btn-cancel-condition" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ キャンセル</button>
                 </div>
@@ -4178,28 +4579,36 @@ EC --> Customer: 確認メール
     }
 
     displayExistingBranches(action) {
-        // 真の分岐表示
+        // 真の分岐表示（インライン編集可能）
         const trueBranchDiv = document.getElementById('edit-true-branch');
+        trueBranchDiv.setAttribute('data-branch-type', 'true');
+        
         if (action.trueBranch && action.trueBranch.length > 0) {
-            trueBranchDiv.innerHTML = action.trueBranch.map((branchAction, index) => 
-                `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #28a745;">
-                    ${branchAction.from} → ${branchAction.to}: ${branchAction.text}
-                </div>`
-            ).join('');
+            trueBranchDiv.innerHTML = this.renderBranchActions('condition', 0, action.trueBranch);
         } else {
-            trueBranchDiv.innerHTML = '<div style="color: #666; font-style: italic;">まだアクションがありません</div>';
+            trueBranchDiv.innerHTML = `
+                <div style="color: #666; font-style: italic;">まだアクションがありません</div>
+                <button class="btn-add-action-inline" onclick="window.editor.addActionToBranch('condition', 0)">
+                    <span>➕</span>
+                    <span>アクション追加</span>
+                </button>
+            `;
         }
         
-        // 偽の分岐表示
+        // 偽の分岐表示（インライン編集可能）
         const falseBranchDiv = document.getElementById('edit-false-branch');
+        falseBranchDiv.setAttribute('data-branch-type', 'false');
+        
         if (action.falseBranch && action.falseBranch.length > 0) {
-            falseBranchDiv.innerHTML = action.falseBranch.map((branchAction, index) => 
-                `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #dc3545;">
-                    ${branchAction.from} → ${branchAction.to}: ${branchAction.text}
-                </div>`
-            ).join('');
+            falseBranchDiv.innerHTML = this.renderBranchActions('condition', 1, action.falseBranch);
         } else {
-            falseBranchDiv.innerHTML = '<div style="color: #666; font-style: italic;">まだアクションがありません</div>';
+            falseBranchDiv.innerHTML = `
+                <div style="color: #666; font-style: italic;">まだアクションがありません</div>
+                <button class="btn-add-action-inline" onclick="window.editor.addActionToBranch('condition', 1)">
+                    <span>➕</span>
+                    <span>アクション追加</span>
+                </button>
+            `;
         }
     }
 
@@ -4265,27 +4674,28 @@ EC --> Customer: 確認メール
     showLoopEditModal(action) {
         // モーダルオーバーレイの作成
         const modal = document.createElement('div');
+        modal.id = 'editModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-dialog loop-edit-modal" style="max-width: 700px;">
-                <div class="modal-header">
-                    <h3>🔁 ループの編集</h3>
+            <div class="modal-dialog loop-edit-modal" style="width: 900px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header" style="flex-shrink: 0; padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">🔁 ループの編集</h3>
                     <button class="modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
                 </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">ループ条件:</label>
+                <div class="modal-body" style="flex: 1; padding: 20px; overflow-y: auto; max-height: calc(90vh - 140px);">
+                    <div class="form-group" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #333;">ループ条件:</label>
                         <input type="text" id="edit-loop-condition" value="${action.loopCondition || ''}" 
                                placeholder="例：在庫がある間" 
                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
                     
-                    <div class="loop-section" style="padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px;">
-                        <h4 style="margin-bottom: 10px; color: #17a2b8;">🔄 ループ内の処理</h4>
+                    <div class="loop-section" style="padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; background: white;">
+                        <h4 style="margin-bottom: 10px; color: #17a2b8; font-size: 16px;">🔄 ループ内の処理</h4>
                         <div id="edit-loop-actions" style="min-height: 50px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;"></div>
                     </div>
                 </div>
-                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right;">
+                <div class="modal-footer" style="flex-shrink: 0; padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right; background: white;">
                     <button class="btn-save-loop" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">✓ 保存</button>
                     <button class="btn-cancel-loop" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ キャンセル</button>
                 </div>
@@ -4353,14 +4763,18 @@ EC --> Customer: 確認メール
 
     displayExistingLoopActions(action) {
         const loopActionsDiv = document.getElementById('edit-loop-actions');
+        loopActionsDiv.setAttribute('data-loop-actions', 'true');
+        
         if (action.loopActions && action.loopActions.length > 0) {
-            loopActionsDiv.innerHTML = action.loopActions.map((loopAction, index) => 
-                `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #17a2b8;">
-                    ${loopAction.from} → ${loopAction.to}: ${loopAction.text}
-                </div>`
-            ).join('');
+            loopActionsDiv.innerHTML = this.renderBranchActions('loop', 0, action.loopActions);
         } else {
-            loopActionsDiv.innerHTML = '<div style="color: #666; font-style: italic;">まだアクションがありません</div>';
+            loopActionsDiv.innerHTML = `
+                <div style="color: #666; font-style: italic;">まだアクションがありません</div>
+                <button class="btn-add-action-inline" onclick="window.editor.addActionToBranch('loop', 0)">
+                    <span>➕</span>
+                    <span>アクション追加</span>
+                </button>
+            `;
         }
     }
 
@@ -4423,24 +4837,37 @@ EC --> Customer: 確認メール
     showParallelEditModal(action) {
         // モーダルオーバーレイの作成
         const modal = document.createElement('div');
+        modal.id = 'editModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="modal-dialog parallel-edit-modal" style="max-width: 900px;">
-                <div class="modal-header">
-                    <h3>⚡ 並行処理の編集</h3>
+            <div class="modal-dialog parallel-edit-modal" style="width: 900px; max-width: 90%; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header" style="flex-shrink: 0; padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">⚡ 並行処理の編集</h3>
                     <button class="modal-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
                 </div>
-                <div class="modal-body" style="padding: 20px;">
-                    <div class="form-group" style="margin-bottom: 20px; text-align: center;">
-                        <button class="btn-add-parallel-branch" 
-                                style="padding: 8px 15px; background-color: #ffc107; color: #212529; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">+ ブランチ追加</button>
-                        <button class="btn-remove-parallel-branch" 
-                                style="padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">- ブランチ削除</button>
+                <div class="modal-body" style="flex: 1; padding: 20px; overflow-y: auto; max-height: calc(90vh - 140px);">
+                    <div class="form-group" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="font-weight: bold; font-size: 14px; color: #333;">並行ブランチ管理:</label>
+                            <span style="font-size: 12px; color: #666;">
+                                💡 各ブランチは並行して実行される独立したアクションの流れです
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: stretch;">
+                            <button class="btn-add-parallel-branch" 
+                                    style="flex: 1; padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; height: 38px;">
+                                ➕ ブランチ追加
+                            </button>
+                            <button class="btn-remove-parallel-branch" 
+                                    style="flex: 1; padding: 10px 15px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; height: 38px;">
+                                ➖ ブランチ削除
+                            </button>
+                        </div>
                     </div>
                     
-                    <div id="edit-parallel-branches" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
+                    <div id="edit-parallel-branches" style="display: flex; flex-direction: column; gap: 15px;"></div>
                 </div>
-                <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right;">
+                <div class="modal-footer" style="flex-shrink: 0; padding: 15px 20px; border-top: 1px solid #e0e0e0; text-align: right; background: white;">
                     <button class="btn-save-parallel" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">✓ 保存</button>
                     <button class="btn-cancel-parallel" style="padding: 8px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">✗ キャンセル</button>
                 </div>
@@ -4527,23 +4954,36 @@ EC --> Customer: 確認メール
         branches.forEach((branch, branchIndex) => {
             const branchDiv = document.createElement('div');
             branchDiv.className = 'parallel-branch';
+            branchDiv.setAttribute('data-parallel-branch', branchIndex);
             branchDiv.style.cssText = `
-                flex: 1;
-                min-width: 250px;
                 padding: 15px;
                 border: 1px solid #e0e0e0;
-                border-radius: 4px;
-                background-color: #f8f9fa;
+                border-radius: 8px;
+                background-color: #ffffff;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             `;
             
+            const branchContent = branch.length > 0 
+                ? this.renderBranchActions('parallel', branchIndex, branch)
+                : `
+                    <div style="color: #666; font-style: italic; padding: 10px; text-align: center;">まだアクションがありません</div>
+                    <button class="btn-add-action-inline" onclick="window.editor.addActionToBranch('parallel', ${branchIndex})">
+                        <span>➕</span>
+                        <span>アクション追加</span>
+                    </button>
+                `;
+            
             branchDiv.innerHTML = `
-                <h5 style="margin-bottom: 10px; color: #6f42c1;">ブランチ ${branchIndex + 1}</h5>
-                <div class="branch-actions" style="min-height: 50px;">
-                    ${branch.map((branchAction, actionIndex) => 
-                        `<div style="padding: 5px; margin: 5px 0; background-color: white; border-radius: 3px; border-left: 3px solid #6f42c1;">
-                            ${branchAction.from} → ${branchAction.to}: ${branchAction.text}
-                        </div>`
-                    ).join('') || '<div style="color: #666; font-style: italic;">まだアクションがありません</div>'}
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #6f42c1;">
+                    <h4 style="margin: 0; color: #6f42c1; font-size: 16px;">
+                        🧵 ブランチ ${branchIndex + 1}
+                    </h4>
+                    <span style="background: #6f42c1; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                        ${branch.length} アクション
+                    </span>
+                </div>
+                <div class="branch-actions" style="min-height: 80px; max-height: 400px; overflow-y: auto;">
+                    ${branchContent}
                 </div>
             `;
             
@@ -4612,6 +5052,8 @@ EC --> Customer: 確認メール
 // アプリケーション初期化
 document.addEventListener('DOMContentLoaded', () => {
     const app = new PlantUMLEditor();
+    // グローバルスコープに登録（インライン編集機能のため）
+    window.editor = app;
     window.app = app; // グローバルにアクセス可能にする
     
     // カスタムパターンの読み込み

@@ -1,0 +1,315 @@
+# Artillery WebSocket Load Test Configuration
+# PlantUMLエディタのリアルタイム同期機能の負荷テスト
+
+config:
+  target: 'ws://localhost:8086'
+  phases:
+    # WebSocket接続の段階的増加
+    - duration: 60
+      arrivalRate: 10
+      name: "ウォームアップフェーズ"
+    - duration: 120  
+      arrivalRate: 50
+      name: "通常負荷フェーズ"
+    - duration: 180
+      arrivalRate: 100
+      name: "高負荷フェーズ"  
+    - duration: 60
+      arrivalRate: 200
+      name: "スパイクフェーズ"
+    - duration: 120
+      arrivalRate: 50
+      name: "クールダウンフェーズ"
+  
+  # WebSocket設定
+  ws:
+    autoconnect: true
+    connectTimeout: 10000
+    acknowledge: true
+    
+  # プラグイン設定
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+      
+  # 環境変数
+  variables:
+    baseUrl: 'http://localhost:8086'
+    wsUrl: 'ws://localhost:8086'
+    
+  # タイムアウト設定
+  timeout: 30
+
+# テストシナリオ
+scenarios:
+  # メインWebSocketテストシナリオ
+  - name: "PlantUML Editor WebSocket Load Test"
+    weight: 100
+    
+    # 事前処理: WebSocket接続確立
+    beforeRequest: 
+      - think: 1
+      
+    # WebSocketフロー
+    flow:
+      # 1. WebSocket接続開始
+      - ws:
+          connect: "/ws"
+          headers:
+            User-Agent: "Artillery-WebSocket-Test/1.0"
+            X-Test-Type: "websocket-load"
+          subprotocols:
+            - "plantuml-editor-protocol"
+            
+      # 2. 初期認証/ハンドシェイク
+      - ws:
+          send:
+            payload: |
+              {
+                "type": "auth",
+                "userId": "test_user_{{ $randomString() }}",
+                "sessionId": "session_{{ $randomString() }}",
+                "timestamp": {{ $timestamp() }},
+                "clientInfo": {
+                  "browser": "Artillery-Test",
+                  "version": "1.0"
+                }
+              }
+          acknowledge:
+            match:
+              json: "$.type"
+              value: "auth_success"
+              
+      # 3. エディタ変更イベントの連続送信
+      - loop:
+          count: 20
+          over:
+            - japanese_input: "ユーザーがシステムにログインする"
+            - japanese_input: "システムがデータベースにアクセスする"  
+            - japanese_input: "APIがレスポンスを返す"
+            - japanese_input: "管理者が設定を変更する"
+            - japanese_input: "バッチ処理が実行される"
+            - japanese_input: "ファイルがアップロードされる"
+            - japanese_input: "レポートが生成される"
+            - japanese_input: "通知が送信される"
+            - japanese_input: "バックアップが実行される"
+            - japanese_input: "ログが記録される"
+        flow:
+          - ws:
+              send:
+                payload: |
+                  {
+                    "type": "editor_change",
+                    "data": {
+                      "content": "{{ japanese_input }}",
+                      "cursor": {{ $randomInt(0, 50) }},
+                      "selection": {
+                        "start": {{ $randomInt(0, 20) }},
+                        "end": {{ $randomInt(20, 50) }}
+                      },
+                      "timestamp": {{ $timestamp() }},
+                      "sequence": {{ $loopCount }}
+                    },
+                    "userId": "{{ $randomString() }}",
+                    "sessionId": "session_{{ $randomString() }}"
+                  }
+              acknowledge:
+                match:
+                  json: "$.type"
+                  value: "conversion_result"
+                  
+          # リアルタイム同期の遅延テスト
+          - ws:
+              send:
+                payload: |
+                  {
+                    "type": "sync_request",
+                    "requestId": "sync_{{ $randomString() }}",
+                    "timestamp": {{ $timestamp() }}
+                  }
+              acknowledge:
+                match:
+                  json: "$.type"  
+                  value: "sync_response"
+                capture:
+                  - json: "$.latency"
+                    as: "sync_latency"
+                    
+          # ランダム待機（リアルなユーザー操作をシミュレート）
+          - think: "{{ $randomInt(100, 1000) }}"
+      
+      # 4. 大量データ同期テスト
+      - ws:
+          send:
+            payload: |
+              {
+                "type": "bulk_sync",
+                "data": {
+                  "operations": [
+                    {
+                      "type": "insert",
+                      "position": 0,
+                      "content": "複雑なビジネスプロセスシナリオ: ECサイトでの購入フローにおいて、ユーザーが商品を検索し、カートに追加し、決済を完了するまでの一連の処理"
+                    },
+                    {
+                      "type": "update", 
+                      "position": 100,
+                      "content": "システム統合シナリオ: 在庫管理システムと注文管理システムが連携して、リアルタイムに在庫状況を更新する"
+                    },
+                    {
+                      "type": "delete",
+                      "range": {
+                        "start": 200,
+                        "end": 250
+                      }
+                    }
+                  ],
+                  "batchId": "batch_{{ $randomString() }}",
+                  "timestamp": {{ $timestamp() }}
+                },
+                "expectResponse": true
+              }
+          acknowledge:
+            match:
+              json: "$.type"
+              value: "bulk_sync_complete"
+              
+      # 5. パフォーマンス測定
+      - ws:
+          send:
+            payload: |
+              {
+                "type": "performance_test",
+                "data": {
+                  "testSize": "large",
+                  "content": "{{ $randomString() }}".repeat(1000),
+                  "iterations": 10,
+                  "timestamp": {{ $timestamp() }}
+                }
+              }
+          acknowledge:
+            match:
+              json: "$.type"
+              value: "performance_result"
+            capture:
+              - json: "$.metrics.processingTime"
+                as: "processing_time"
+              - json: "$.metrics.memoryUsage" 
+                as: "memory_usage"
+                
+      # 6. エラーハンドリングテスト
+      - ws:
+          send:
+            payload: |
+              {
+                "type": "invalid_request",
+                "malformed": "data{{ $randomString() }}",
+                "timestamp": {{ $timestamp() }}
+              }
+          acknowledge:
+            match:
+              json: "$.type"
+              value: "error"
+              
+      # 7. 接続維持テスト（ハートビート）
+      - loop:
+          count: 5
+        flow:
+          - ws:
+              send:
+                payload: |
+                  {
+                    "type": "ping",
+                    "timestamp": {{ $timestamp() }}
+                  }
+              acknowledge:
+                match:
+                  json: "$.type"
+                  value: "pong"
+          - think: 5
+          
+      # 8. グレースフル切断
+      - ws:
+          send:
+            payload: |
+              {
+                "type": "disconnect",
+                "reason": "test_complete",
+                "timestamp": {{ $timestamp() }}
+              }
+              
+      # WebSocket接続終了
+      - ws:
+          close: {}
+
+  # 並行HTTP APIテスト（WebSocketと同時実行）
+  - name: "Concurrent HTTP API Test"
+    weight: 30
+    flow:
+      # REST API呼び出し（WebSocket使用中）
+      - get:
+          url: "{{ baseUrl }}/api/health"
+          headers:
+            X-Test-Type: "concurrent-http"
+            
+      - post:
+          url: "{{ baseUrl }}/api/convert"
+          headers:
+            Content-Type: "application/json"
+            X-Test-Type: "concurrent-http"
+          json:
+            input: "WebSocketテスト中のHTTP API呼び出し"
+            type: "concurrent_test"
+            timestamp: "{{ $timestamp() }}"
+            
+      - get:
+          url: "{{ baseUrl }}/api/templates"
+          headers:
+            X-Test-Type: "concurrent-http"
+            
+      - think: 2
+      
+  # 接続品質テスト
+  - name: "Connection Quality Test"  
+    weight: 20
+    flow:
+      # 短時間接続テスト
+      - ws:
+          connect: "/ws"
+          
+      - ws:
+          send:
+            payload: |
+              {
+                "type": "quick_test",
+                "data": "接続品質確認",
+                "timestamp": {{ $timestamp() }}
+              }
+              
+      - ws:
+          close: {}
+          
+      - think: 1
+
+# カスタム関数定義
+functions:
+  generateLargePayload: |
+    function(context, events, done) {
+      const largeContent = 'あ'.repeat(10000); // 10KB of Japanese characters
+      context.vars.largePayload = largeContent;
+      return done();
+    }
+    
+  calculateLatency: |
+    function(context, events, done) {
+      const now = Date.now();
+      const sentTime = context.vars.sent_timestamp;
+      context.vars.calculated_latency = now - sentTime;
+      return done();
+    }
+
+# 後処理: レポート生成設定  
+after:
+  - phase: "all"
+    flow:
+      - log: "WebSocket負荷テスト完了"

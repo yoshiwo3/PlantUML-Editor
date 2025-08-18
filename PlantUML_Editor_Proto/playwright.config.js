@@ -6,8 +6,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   
   // グローバル設定
-  globalSetup: require.resolve('./tests/setup/global.setup.js'),
-  globalTeardown: require.resolve('./tests/setup/global.teardown.js'),
+  // globalSetup: './tests/setup/global.setup.js',
+  // globalTeardown: './tests/setup/global.teardown.js',
   
   // タイムアウト設定
   timeout: 60000, // セキュリティテストは時間がかかる可能性
@@ -29,7 +29,7 @@ export default defineConfig({
   // 共通設定
   use: {
     // ベースURL
-    baseURL: 'http://localhost:8087', // セキュリティ強化版ポート
+    baseURL: 'http://localhost:8086', // 標準ポート
     
     // スクリーンショット設定
     screenshot: 'only-on-failure',
@@ -155,10 +155,9 @@ export default defineConfig({
   
   // 開発サーバー設定（セキュリティ強化版）
   webServer: {
-    command: 'npx http-server -p 8087 -c-1 --cors',
-    url: 'http://localhost:8087',
-    port: 8087,
-    reuseExistingServer: !process.env.CI,
+    command: 'npx http-server -p 8086 -c-1 --cors',
+    url: 'http://localhost:8086',
+    reuseExistingServer: true,
     timeout: 180000, // セキュリティシステム初期化時間考慮
     
     // ヘルスチェック

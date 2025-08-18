@@ -1,0 +1,198 @@
+# E2Eテスト用Docker Compose設定
+# Sprint2 テストフレームワーク対応
+
+version: '3.8'
+
+services:
+  # メインE2Eテストサービス
+  playwright:
+    build:
+      context: ..
+      dockerfile: e2e/Dockerfile
+      args:
+        BUILD_DATE: $BUILD_DATE
+        VCS_REF: $VCS_REF
+        VERSION: $VERSION
+    container_name: plantuml-e2e-playwright
+    environment:
+      # テスト環境設定
+      NODE_ENV: test
+      E2E_MODE: enabled
+      BASE_URL: http://app:8086
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      
+      # 日本語対応
+      LANG: ja_JP.UTF-8
+      LC_ALL: ja_JP.UTF-8
+      
+      # パフォーマンス設定
+      NODE_OPTIONS: --max-old-space-size=4096
+      
+      # デバッグ設定
+      DEBUG: ${DEBUG:-}
+      PWDEBUG: ${PWDEBUG:-}
+      
+      # CI/CD設定
+      CI: ${CI:-false}
+      GITHUB_ACTIONS: ${GITHUB_ACTIONS:-false}
+    volumes:
+      # テスト結果とレポート
+      - ./test-results:/app/test-results
+      - ./reports:/app/reports
+      - ./auth:/app/auth
+      
+      # テストファイル（開発時）
+      - ./tests:/app/tests:ro
+      - ./page-objects:/app/page-objects:ro
+      - ./fixtures:/app/fixtures:ro
+      - ./setup:/app/setup:ro
+      
+      # 設定ファイル
+      - ./playwright.config.js:/app/playwright.config.js:ro
+      
+      # 共有メモリ（Chrome用）
+      - /dev/shm:/dev/shm
+    depends_on:
+      - app
+    networks:
+      - e2e-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    command: >
+      sh -c "
+        echo '🚀 E2Eテスト環境初期化中...'
+        npm run test:health-check || echo '⚠️ ヘルスチェック警告'
+        
+        if [ \"$$CI\" = \"true\" ]; then
+          echo '🤖 CI環境でのテスト実行'
+          npm run test:e2e:ci
+        else
+          echo '💻 開発環境でのテスト実行'
+          npm run test:e2e
+        fi
+      "
+
+  # アプリケーションサービス（テスト対象）
+  app:
+    image: node:20.18.0-alpine
+    container_name: plantuml-e2e-app
+    working_dir: /app
+    environment:
+      NODE_ENV: test
+      PORT: 8086
+      E2E_TEST_MODE: enabled
+    volumes:
+      - ../:/app:ro
+      - ../node_modules:/app/node_modules:rw
+    ports:
+      - "8086:8086"
+    networks:
+      - e2e-network
+    command: >
+      sh -c "
+        echo '📱 アプリケーションサーバー起動中...'
+        npm install --production=false
+        npm run start:test || npm run start:node
+      "
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8086"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # モックサービス（API/外部依存関係）
+  mock-service:
+    image: node:20.18.0-alpine
+    container_name: plantuml-e2e-mock
+    working_dir: /app
+    environment:
+      NODE_ENV: test
+      PORT: 3001
+    volumes:
+      - ./mocks:/app:ro
+    ports:
+      - "3001:3001"
+    networks:
+      - e2e-network
+    command: >
+      sh -c "
+        echo '🎭 モックサービス起動中...'
+        npm install express cors
+        node mock-server.js
+      "
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # メトリクス収集サービス
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: plantuml-e2e-metrics
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - e2e-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    profiles:
+      - monitoring
+
+  # ダッシュボードサービス
+  grafana:
+    image: grafana/grafana:latest
+    container_name: plantuml-e2e-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana:/etc/grafana/provisioning:ro
+    networks:
+      - e2e-network
+    profiles:
+      - monitoring
+
+  # Allureレポートサービス
+  allure:
+    image: frankescobar/allure-docker-service
+    container_name: plantuml-e2e-allure
+    ports:
+      - "5050:5050"
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: 3
+      KEEP_HISTORY: 20
+    volumes:
+      - ./reports/allure-results:/app/allure-results
+      - ./reports/allure-reports:/app/default-reports
+    networks:
+      - e2e-network
+    profiles:
+      - reporting
+
+networks:
+  e2e-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  playwright-cache:
+    driver: local
+  node-modules:
+    driver: local

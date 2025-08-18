@@ -40,7 +40,10 @@
                 <div id="actor-action-mode" class="mode-content active">
                     <!-- Step 1: アクター選択 -->
                     <div class="editor-section">
-                        <h3>Step 1: アクターを選択</h3>
+                        <h3>Step 1: アクターを選択
+                            <button class="btn-text-action" id="btn-add-actor" style="margin-left: 20px; padding: 5px 15px; font-size: 14px;">追加</button>
+                            <button class="btn-text-action" id="btn-delete-actor" style="margin-left: 10px; padding: 5px 15px; font-size: 14px;">削除</button>
+                        </h3>
                         <div class="actor-grid">
                             <button class="actor-btn" data-actor="顧客">
                                 <span class="actor-icon">👤</span>
@@ -66,18 +69,6 @@
                                 <span class="actor-icon">🚚</span>
                                 <span>配送業者</span>
                             </button>
-                            <button class="actor-btn add-custom">
-                                <span class="actor-icon">➕</span>
-                                <span>追加</span>
-                            </button>
-                        </div>
-                        
-                        <!-- 選択中のアクター表示 -->
-                        <div class="selected-actors">
-                            <h4>選択中のアクター:</h4>
-                            <div class="actor-chips">
-                                <!-- 動的に追加される -->
-                            </div>
                         </div>
                     </div>
 
@@ -127,7 +118,7 @@
                                         <span>非同期 (-->>)</span>
                                     </label>
                                 </div>
-                                <button class="btn-add-action">➕ 追加</button>
+                                <button class="btn-add-action" style="display: none;">➕ 追加</button>
                             </div>
                         </div>
 
@@ -223,6 +214,7 @@
                         </div>
                     </div>
                 </div>
+
 
                 <!-- パターン選択モード -->
                 <div id="pattern-mode" class="mode-content">
@@ -1271,6 +1263,9 @@ end ref</pre>
     <script src="ErrorBoundary.js"></script>
     
     <!-- Phase 1: Edit Modal System (改修計画v4) -->
+    <script src="SafeDOMManager.js"></script>
+    <script src="ActorMasterManager.js"></script>
+    <script src="ActorMasterMaintenanceUI.js"></script>
     <script src="EditModalManager.js"></script>
     <script src="ActionEditor.js"></script>
     
@@ -1284,6 +1279,6 @@ end ref</pre>
     
     <script src="drawio-converter.js"></script>
     <!-- キャッシュバスティング対策: タイムスタンプパラメータ追加 -->
-    <script src="app.js?v=20250814161500"></script>
+    <script src="app.js?v=20250818222000"></script>
 </body>
 </html>

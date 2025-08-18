@@ -1,0 +1,181 @@
+# Grafana Datasource Configuration
+# Prometheus, InfluxDB, Elasticsearch統合
+
+apiVersion: 1
+
+datasources:
+  # Prometheusデータソース（メトリクス収集）
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    
+    # 基本認証設定
+    basicAuth: false
+    # basicAuthUser: admin
+    # basicAuthPassword: admin
+    
+    # カスタムHTTPヘッダー
+    jsonData:
+      httpMethod: GET
+      queryTimeout: 60s
+      timeInterval: 15s
+      
+      # Prometheusの高度な設定
+      prometheusType: Prometheus
+      prometheusVersion: 2.40.0
+      cacheLevel: High
+      
+      # アラート設定
+      manageAlerts: true
+      alertmanagerUid: alertmanager
+      
+    # セキュアデータ
+    secureJsonData:
+      # httpHeaderValue1: "Bearer token"
+    
+    uid: prometheus_uid
+    orgId: 1
+    version: 1
+    editable: true
+
+  # InfluxDBデータソース（タイムシリーズデータ）
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    
+    # InfluxDB設定
+    database: plantuml_metrics
+    user: admin
+    password: admin123
+    
+    jsonData:
+      # InfluxDB v2.x設定
+      version: Flux
+      organization: plantuml-org
+      defaultBucket: e2e-metrics
+      
+      # タイムアウト設定
+      queryTimeout: 60s
+      httpTimeout: 10s
+      
+      # TLS設定
+      tlsAuth: false
+      tlsAuthWithCACert: false
+      
+    secureJsonData:
+      token: "your-influxdb-token-here"
+      
+    uid: influxdb_uid
+    orgId: 1
+    version: 1
+    editable: true
+
+  # Elasticsearchデータソース（ログ分析）
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    
+    # Elasticsearch設定
+    database: "[plantuml-logs-]YYYY.MM.DD"
+    interval: Daily
+    timeField: "@timestamp"
+    
+    jsonData:
+      # バージョン設定
+      esVersion: 8.0.0
+      
+      # インデックス設定
+      timeInterval: 1d
+      maxConcurrentShardRequests: 5
+      
+      # ログレベル設定
+      logMessageField: message
+      logLevelField: level
+      
+      # 詳細設定
+      includeFrozen: false
+      
+    uid: elasticsearch_uid
+    orgId: 1
+    version: 1
+    editable: true
+
+  # Lokiデータソース（ログ集約）
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    
+    jsonData:
+      # 最大行数制限
+      maxLines: 1000
+      
+      # タイムアウト設定
+      timeout: 60s
+      
+      # 高速パフォーマンス設定
+      derivedFields:
+        - datasourceUid: prometheus_uid
+          matcherRegex: "trace_id=(\\w+)"
+          name: "Trace"
+          url: "http://jaeger:16686/trace/$${__value.raw}"
+          
+    uid: loki_uid
+    orgId: 1
+    version: 1
+    editable: true
+
+  # Jaegerデータソース（分散トレーシング）
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    
+    jsonData:
+      # トレース検索設定
+      tracesToLogs:
+        datasourceUid: loki_uid
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [
+          { key: 'service.name', value: 'service' },
+          { key: 'service.namespace', value: 'namespace' }
+        ]
+        mapTagNamesEnabled: true
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        
+      # NodeGraphAPI設定  
+      nodeGraph:
+        enabled: true
+        
+    uid: jaeger_uid
+    orgId: 1
+    version: 1
+    editable: true
+
+  # TestRailデータソース（テスト管理）
+  - name: TestRail-JSON
+    type: simpod-json-datasource
+    access: proxy
+    url: http://testrail-api:8080
+    
+    jsonData:
+      # カスタムヘッダー
+      httpHeaderName1: "Authorization"
+      httpHeaderName2: "Content-Type"
+      
+      # タイムアウト設定
+      queryTimeout: 30s
+      
+    secureJsonData:
+      httpHeaderValue1: "Basic your-testrail-token"
+      httpHeaderValue2: "application/json"
+      
+    uid: testrail_uid
+    orgId: 1
+    version: 1
+    editable: true

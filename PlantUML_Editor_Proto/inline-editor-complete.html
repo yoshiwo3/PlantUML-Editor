@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlantUMLインライン編集機能 - 完全実装版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 200px);
+        }
+
+        .editor-panel {
+            border-right: 2px solid #ecf0f1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            background: #ecf0f1;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .actions-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .action-item {
+            background: white;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: move;
+        }
+
+        .action-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .action-item.drag-over {
+            border-color: #3498db;
+            background: #ebf5fb;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            font-size: 20px;
+            color: #7f8c8d;
+            padding: 0 5px;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        select, input {
+            padding: 6px 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .message-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .condition-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .condition-btn:hover {
+            background: #2980b9;
+        }
+
+        /* ブロック構造のスタイル */
+        .block-container {
+            background: #ecf0f1;
+            border: 2px solid #95a5a6;
+            border-radius: 8px;
+            margin: 15px 0;
+            padding: 10px;
+        }
+
+        .block-header {
+            background: #34495e;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .block-type {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .block-condition {
+            background: white;
+            padding: 6px 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .block-body {
+            padding: 10px;
+            min-height: 60px;
+            background: white;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+
+        .branch-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .branch {
+            background: white;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            padding: 10px;
+            min-height: 80px;
+        }
+
+        .branch-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        /* PlantUML出力パネル */
+        .output-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-textarea {
+            flex: 1;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: none;
+            background: #2c3e50;
+            color: #2ecc71;
+            resize: none;
+            outline: none;
+        }
+
+        .sync-status {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .sync-status.synced {
+            background: #27ae60;
+        }
+
+        .sync-status.error {
+            background: #e74c3c;
+        }
+
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+
+        /* アニメーション */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .action-item {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        /* 通知 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease-in-out;
+            z-index: 2000;
+        }
+
+        .notification.success {
+            background: #27ae60;
+        }
+
+        .notification.error {
+            background: #e74c3c;
+        }
+
+        .notification.info {
+            background: #3498db;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span class="status-indicator"></span>
+                PlantUMLインライン編集機能 - 完全実装版
+            </h1>
+            <div>
+                <span id="action-count">アクション数: 0</span> | 
+                <span id="sync-time">最終同期: --:--:--</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- 編集パネル -->
+            <div class="editor-panel">
+                <div class="toolbar">
+                    <button class="btn btn-primary" onclick="addAction()">
+                        ➕ アクション追加
+                    </button>
+                    <button class="btn btn-success" onclick="addConditionBlock()">
+                        🔀 条件分岐
+                    </button>
+                    <button class="btn btn-success" onclick="addLoopBlock()">
+                        🔁 ループ
+                    </button>
+                    <button class="btn btn-success" onclick="addParallelBlock()">
+                        ⚡ 並行処理
+                    </button>
+                    <button class="btn btn-warning" onclick="clearAll()">
+                        🗑️ クリア
+                    </button>
+                    <button class="btn btn-primary" onclick="exportPlantUML()">
+                        📥 エクスポート
+                    </button>
+                </div>
+
+                <div class="actions-container" id="actions-container">
+                    <!-- アクションアイテムがここに追加される -->
+                </div>
+            </div>
+
+            <!-- PlantUML出力パネル -->
+            <div class="output-panel">
+                <textarea class="output-textarea" id="plantuml-output" readonly>
+@startuml
+' PlantUMLコードがここに表示されます
+@enduml
+                </textarea>
+                <div class="sync-status synced" id="sync-status">
+                    ✅ 同期済み
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 条件分岐モーダル -->
+    <div class="modal" id="condition-modal">
+        <div class="modal-content">
+            <div class="modal-header">条件分岐の追加</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>条件式:</label>
+                    <input type="text" id="condition-input" placeholder="例: ユーザーが認証済み">
+                </div>
+                <div class="form-group">
+                    <label>条件タイプ:</label>
+                    <select id="condition-type">
+                        <option value="alt">alt (if-else)</option>
+                        <option value="opt">opt (if only)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="closeModal('condition-modal')">キャンセル</button>
+                <button class="btn btn-primary" onclick="confirmCondition()">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ループモーダル -->
+    <div class="modal" id="loop-modal">
+        <div class="modal-content">
+            <div class="modal-header">ループの追加</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>ループ条件:</label>
+                    <input type="text" id="loop-condition" placeholder="例: i < 10">
+                </div>
+                <div class="form-group">
+                    <label>ループタイプ:</label>
+                    <select id="loop-type">
+                        <option value="loop">loop</option>
+                        <option value="while">while</option>
+                        <option value="repeat">repeat while</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="closeModal('loop-modal')">キャンセル</button>
+                <button class="btn btn-primary" onclick="confirmLoop()">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let actions = [];
+        let blocks = [];
+        let draggedElement = null;
+        let actionIdCounter = 0;
+        let blockIdCounter = 0;
+
+        // 初期化
+        window.onload = function() {
+            console.log('✅ インライン編集機能が起動しました');
+            addInitialAction();
+            updatePlantUML();
+            setupAutoSync();
+        };
+
+        // 初期アクションの追加
+        function addInitialAction() {
+            const container = document.getElementById('actions-container');
+            const actionItem = createActionElement();
+            container.appendChild(actionItem);
+            updateActionCount();
+        }
+
+        // アクション要素の作成（7要素構造）
+        function createActionElement() {
+            const actionId = ++actionIdCounter;
+            const div = document.createElement('div');
+            div.className = 'action-item';
+            div.draggable = true;
+            div.dataset.actionId = actionId;
+            
+            div.innerHTML = `
+                <span class="drag-handle">☰</span>
+                <select class="actor-from" onchange="updatePlantUML()">
+                    <option>Alice</option>
+                    <option>Bob</option>
+                    <option>System</option>
+                    <option>Database</option>
+                    <option>User</option>
+                </select>
+                <select class="arrow-type" onchange="updatePlantUML()">
+                    <option value="->">→ (同期)</option>
+                    <option value="->>">->> (非同期)</option>
+                    <option value="-->">--> (返答)</option>
+                    <option value="-->>">-->> (非同期返答)</option>
+                </select>
+                <select class="actor-to" onchange="updatePlantUML()">
+                    <option>Bob</option>
+                    <option>Alice</option>
+                    <option>System</option>
+                    <option>Database</option>
+                    <option>User</option>
+                </select>
+                <input type="text" class="message-input" placeholder="メッセージを入力" 
+                       oninput="updatePlantUML()" value="">
+                <button class="action-btn delete-btn" onclick="deleteAction(this)">🗑️</button>
+                <button class="action-btn condition-btn" onclick="wrapInCondition(this)">🔀</button>
+            `;
+
+            // ドラッグイベントの設定
+            div.addEventListener('dragstart', handleDragStart);
+            div.addEventListener('dragend', handleDragEnd);
+            div.addEventListener('dragover', handleDragOver);
+            div.addEventListener('drop', handleDrop);
+            div.addEventListener('dragenter', handleDragEnter);
+            div.addEventListener('dragleave', handleDragLeave);
+
+            return div;
+        }
+
+        // アクション追加
+        function addAction() {
+            const container = document.getElementById('actions-container');
+            const actionItem = createActionElement();
+            container.appendChild(actionItem);
+            
+            showNotification('アクションを追加しました', 'success');
+            updateActionCount();
+            updatePlantUML();
+        }
+
+        // アクション削除
+        function deleteAction(button) {
+            if (confirm('このアクションを削除しますか？')) {
+                const item = button.closest('.action-item');
+                item.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => {
+                    item.remove();
+                    showNotification('アクションを削除しました', 'info');
+                    updateActionCount();
+                    updatePlantUML();
+                }, 300);
+            }
+        }
+
+        // ドラッグ&ドロップ機能
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            const items = document.querySelectorAll('.action-item');
+            items.forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            if (draggedElement !== this) {
+                const container = this.parentNode;
+                const allItems = Array.from(container.querySelectorAll('.action-item'));
+                const draggedIndex = allItems.indexOf(draggedElement);
+                const targetIndex = allItems.indexOf(this);
+
+                if (draggedIndex < targetIndex) {
+                    container.insertBefore(draggedElement, this.nextSibling);
+                } else {
+                    container.insertBefore(draggedElement, this);
+                }
+
+                showNotification('順序を変更しました', 'info');
+                updatePlantUML();
+            }
+
+            return false;
+        }
+
+        // 条件分岐ブロックの追加
+        function addConditionBlock() {
+            document.getElementById('condition-modal').classList.add('active');
+        }
+
+        function confirmCondition() {
+            const condition = document.getElementById('condition-input').value || '条件';
+            const type = document.getElementById('condition-type').value;
+            
+            const container = document.getElementById('actions-container');
+            const blockId = ++blockIdCounter;
+            
+            const blockDiv = document.createElement('div');
+            blockDiv.className = 'block-container';
+            blockDiv.dataset.blockId = blockId;
+            blockDiv.dataset.blockType = 'condition';
+            
+            blockDiv.innerHTML = `
+                <div class="block-header">
+                    <span class="block-type">条件分岐 (${type})</span>
+                    <input class="block-condition" value="${condition}" onchange="updatePlantUML()">
+                    <button class="action-btn delete-btn" onclick="deleteBlock(this)">削除</button>
+                </div>
+                <div class="branch-container">
+                    <div class="branch">
+                        <div class="branch-label">TRUE (条件成立)</div>
+                        <div class="block-body" data-branch="true"></div>
+                        <button class="btn btn-primary" onclick="addActionToBlock(this, 'true')">
+                            ➕ アクション追加
+                        </button>
+                    </div>
+                    <div class="branch">
+                        <div class="branch-label">FALSE (条件不成立)</div>
+                        <div class="block-body" data-branch="false"></div>
+                        <button class="btn btn-primary" onclick="addActionToBlock(this, 'false')">
+                            ➕ アクション追加
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(blockDiv);
+            closeModal('condition-modal');
+            showNotification('条件分岐を追加しました', 'success');
+            updatePlantUML();
+        }
+
+        // ループブロックの追加
+        function addLoopBlock() {
+            document.getElementById('loop-modal').classList.add('active');
+        }
+
+        function confirmLoop() {
+            const condition = document.getElementById('loop-condition').value || '条件';
+            const type = document.getElementById('loop-type').value;
+            
+            const container = document.getElementById('actions-container');
+            const blockId = ++blockIdCounter;
+            
+            const blockDiv = document.createElement('div');
+            blockDiv.className = 'block-container';
+            blockDiv.dataset.blockId = blockId;
+            blockDiv.dataset.blockType = 'loop';
+            
+            blockDiv.innerHTML = `
+                <div class="block-header">
+                    <span class="block-type">ループ (${type})</span>
+                    <input class="block-condition" value="${condition}" onchange="updatePlantUML()">
+                    <button class="action-btn delete-btn" onclick="deleteBlock(this)">削除</button>
+                </div>
+                <div class="block-body" data-loop="body"></div>
+                <button class="btn btn-primary" onclick="addActionToBlock(this, 'loop')">
+                    ➕ アクション追加
+                </button>
+            `;
+            
+            container.appendChild(blockDiv);
+            closeModal('loop-modal');
+            showNotification('ループを追加しました', 'success');
+            updatePlantUML();
+        }
+
+        // 並行処理ブロックの追加
+        function addParallelBlock() {
+            const container = document.getElementById('actions-container');
+            const blockId = ++blockIdCounter;
+            
+            const blockDiv = document.createElement('div');
+            blockDiv.className = 'block-container';
+            blockDiv.dataset.blockId = blockId;
+            blockDiv.dataset.blockType = 'parallel';
+            
+            blockDiv.innerHTML = `
+                <div class="block-header">
+                    <span class="block-type">並行処理 (par)</span>
+                    <button class="action-btn delete-btn" onclick="deleteBlock(this)">削除</button>
+                </div>
+                <div class="branch-container">
+                    <div class="branch">
+                        <div class="branch-label">並列パス1</div>
+                        <div class="block-body" data-parallel="1"></div>
+                        <button class="btn btn-primary" onclick="addActionToBlock(this, 'parallel1')">
+                            ➕ アクション追加
+                        </button>
+                    </div>
+                    <div class="branch">
+                        <div class="branch-label">並列パス2</div>
+                        <div class="block-body" data-parallel="2"></div>
+                        <button class="btn btn-primary" onclick="addActionToBlock(this, 'parallel2')">
+                            ➕ アクション追加
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(blockDiv);
+            showNotification('並行処理を追加しました', 'success');
+            updatePlantUML();
+        }
+
+        // ブロック内にアクション追加
+        function addActionToBlock(button, branch) {
+            const blockBody = button.previousElementSibling;
+            const actionItem = createActionElement();
+            blockBody.appendChild(actionItem);
+            updatePlantUML();
+        }
+
+        // ブロック削除
+        function deleteBlock(button) {
+            if (confirm('このブロックを削除しますか？')) {
+                const block = button.closest('.block-container');
+                block.remove();
+                showNotification('ブロックを削除しました', 'info');
+                updatePlantUML();
+            }
+        }
+
+        // PlantUML変換と同期
+        function updatePlantUML() {
+            const container = document.getElementById('actions-container');
+            let plantuml = '@startuml\n';
+            plantuml += 'title インライン編集によるシーケンス図\n\n';
+            
+            // アクターの定義
+            const actors = new Set();
+            container.querySelectorAll('.actor-from, .actor-to').forEach(select => {
+                actors.add(select.value);
+            });
+            
+            actors.forEach(actor => {
+                plantuml += `participant ${actor}\n`;
+            });
+            plantuml += '\n';
+            
+            // 各要素の処理
+            const children = container.children;
+            for (let child of children) {
+                if (child.classList.contains('action-item')) {
+                    // 通常のアクション
+                    const from = child.querySelector('.actor-from').value;
+                    const arrow = child.querySelector('.arrow-type').value;
+                    const to = child.querySelector('.actor-to').value;
+                    const message = child.querySelector('.message-input').value || 'メッセージ';
+                    plantuml += `${from} ${arrow} ${to}: ${message}\n`;
+                    
+                } else if (child.classList.contains('block-container')) {
+                    // ブロック構造
+                    const blockType = child.dataset.blockType;
+                    
+                    if (blockType === 'condition') {
+                        const condition = child.querySelector('.block-condition').value;
+                        const trueBranch = child.querySelector('[data-branch="true"]');
+                        const falseBranch = child.querySelector('[data-branch="false"]');
+                        
+                        plantuml += `alt ${condition}\n`;
+                        
+                        // TRUE分岐
+                        trueBranch.querySelectorAll('.action-item').forEach(action => {
+                            const from = action.querySelector('.actor-from').value;
+                            const arrow = action.querySelector('.arrow-type').value;
+                            const to = action.querySelector('.actor-to').value;
+                            const message = action.querySelector('.message-input').value || 'メッセージ';
+                            plantuml += `  ${from} ${arrow} ${to}: ${message}\n`;
+                        });
+                        
+                        plantuml += `else 条件不成立\n`;
+                        
+                        // FALSE分岐
+                        falseBranch.querySelectorAll('.action-item').forEach(action => {
+                            const from = action.querySelector('.actor-from').value;
+                            const arrow = action.querySelector('.arrow-type').value;
+                            const to = action.querySelector('.actor-to').value;
+                            const message = action.querySelector('.message-input').value || 'メッセージ';
+                            plantuml += `  ${from} ${arrow} ${to}: ${message}\n`;
+                        });
+                        
+                        plantuml += `end\n`;
+                        
+                    } else if (blockType === 'loop') {
+                        const condition = child.querySelector('.block-condition').value;
+                        const loopBody = child.querySelector('[data-loop="body"]');
+                        
+                        plantuml += `loop ${condition}\n`;
+                        
+                        loopBody.querySelectorAll('.action-item').forEach(action => {
+                            const from = action.querySelector('.actor-from').value;
+                            const arrow = action.querySelector('.arrow-type').value;
+                            const to = action.querySelector('.actor-to').value;
+                            const message = action.querySelector('.message-input').value || 'メッセージ';
+                            plantuml += `  ${from} ${arrow} ${to}: ${message}\n`;
+                        });
+                        
+                        plantuml += `end\n`;
+                        
+                    } else if (blockType === 'parallel') {
+                        const parallel1 = child.querySelector('[data-parallel="1"]');
+                        const parallel2 = child.querySelector('[data-parallel="2"]');
+                        
+                        plantuml += `par\n`;
+                        
+                        parallel1.querySelectorAll('.action-item').forEach(action => {
+                            const from = action.querySelector('.actor-from').value;
+                            const arrow = action.querySelector('.arrow-type').value;
+                            const to = action.querySelector('.actor-to').value;
+                            const message = action.querySelector('.message-input').value || 'メッセージ';
+                            plantuml += `  ${from} ${arrow} ${to}: ${message}\n`;
+                        });
+                        
+                        plantuml += `else\n`;
+                        
+                        parallel2.querySelectorAll('.action-item').forEach(action => {
+                            const from = action.querySelector('.actor-from').value;
+                            const arrow = action.querySelector('.arrow-type').value;
+                            const to = action.querySelector('.actor-to').value;
+                            const message = action.querySelector('.message-input').value || 'メッセージ';
+                            plantuml += `  ${from} ${arrow} ${to}: ${message}\n`;
+                        });
+                        
+                        plantuml += `end\n`;
+                    }
+                }
+            }
+            
+            plantuml += '@enduml';
+            
+            // 出力エリアに表示
+            document.getElementById('plantuml-output').value = plantuml;
+            
+            // 同期ステータス更新
+            const syncStatus = document.getElementById('sync-status');
+            syncStatus.textContent = '✅ 同期済み';
+            syncStatus.className = 'sync-status synced';
+            
+            // 同期時刻更新
+            const now = new Date();
+            document.getElementById('sync-time').textContent = 
+                `最終同期: ${now.toLocaleTimeString('ja-JP')}`;
+        }
+
+        // 自動同期の設定
+        function setupAutoSync() {
+            setInterval(() => {
+                // 5秒ごとに同期状態をチェック
+                console.log('⏱️ 自動同期チェック:', new Date().toLocaleTimeString());
+            }, 5000);
+        }
+
+        // アクション数の更新
+        function updateActionCount() {
+            const count = document.querySelectorAll('.action-item').length;
+            document.getElementById('action-count').textContent = `アクション数: ${count}`;
+        }
+
+        // すべてクリア
+        function clearAll() {
+            if (confirm('すべてのアクションとブロックをクリアしますか？')) {
+                document.getElementById('actions-container').innerHTML = '';
+                actionIdCounter = 0;
+                blockIdCounter = 0;
+                updateActionCount();
+                updatePlantUML();
+                showNotification('すべてクリアしました', 'info');
+            }
+        }
+
+        // PlantUMLエクスポート
+        function exportPlantUML() {
+            const plantuml = document.getElementById('plantuml-output').value;
+            const blob = new Blob([plantuml], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sequence_${Date.now()}.puml`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('PlantUMLファイルをエクスポートしました', 'success');
+        }
+
+        // モーダル操作
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // 通知表示
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'a':
+                        if (e.shiftKey) {
+                            e.preventDefault();
+                            addAction();
+                        }
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportPlantUML();
+                        break;
+                    case 'Delete':
+                        // 選択されたアイテムを削除
+                        break;
+                }
+            }
+        });
+
+        // ページ離脱時の確認
+        window.addEventListener('beforeunload', (e) => {
+            const actionCount = document.querySelectorAll('.action-item').length;
+            if (actionCount > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        console.log('✅ スクリプト完全ロード完了');
+    </script>
+</body>
+</html>

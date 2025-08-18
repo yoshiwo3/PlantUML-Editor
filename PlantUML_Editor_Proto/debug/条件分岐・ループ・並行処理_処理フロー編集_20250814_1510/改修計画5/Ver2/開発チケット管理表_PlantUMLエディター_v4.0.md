@@ -2,9 +2,9 @@
 
 ## プロジェクト概要
 - **プロジェクト名**: PlantUMLエディター インライン編集機能実装
-- **期間**: 6週間（2025-08-16 ～ 2025-09-27）
-- **チーム規模**: 5-7名想定（マルチエージェント体制）
-- **総見積もり**: 480ポイント
+- **期間**: 10週間（2025-08-16 ～ 2025-10-25）※E2Eテスト拡充により延長
+- **チーム規模**: 7-9名想定（マルチエージェント体制）
+- **総見積もり**: 394ポイント（Sprint 1-5合計）
 
 ## エピック構造
 
@@ -17,8 +17,8 @@
 ### EP-003: パフォーマンス最適化
 **優先度**: High | **見積もり**: 80ポイント | **担当**: web-debug-specialist
 
-### EP-004: テスト実装
-**優先度**: High | **見積もり**: 80ポイント | **担当**: webapp-test-automation
+### EP-004: テスト実装（拡充版）
+**優先度**: Critical | **見積もり**: 135ポイント | **担当**: webapp-test-automation, docker-dev-env-builder
 
 ### EP-005: デプロイメント準備
 **優先度**: Medium | **見積もり**: 40ポイント | **担当**: docker-dev-env-builder
@@ -78,35 +78,142 @@
 - [ ] メモリリーク0件
 - [ ] 統合テスト成功率95%以上
 
-## Sprint 3: テスト完成とデプロイ準備（Week 5-6）
+## Sprint 2 E2Eテスト拡充 (2025-08-16追加)
+
+### E2Eテストスイート実装（28チケット・111ポイント）
+
+#### Phase 1: テスト基盤構築（Week 3-4）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-001 | E2Eテストフレームワーク構築 | EP-004 | 8 | Critical | - | webapp-test-automation | Todo |
+| TEST-E2E-002 | Docker環境最適化 | EP-004 | 5 | High | TEST-E2E-001 | docker-dev-env-builder | Todo |
+| TEST-E2E-003 | CI/CDパイプライン強化 | EP-004 | 5 | High | TEST-E2E-002 | webapp-test-automation | Todo |
+| TEST-E2E-004 | モックサービス実装 | EP-004 | 3 | Medium | TEST-E2E-001 | web-app-coder | Todo |
+| TEST-E2E-005 | テストデータ管理システム | EP-004 | 3 | Medium | TEST-E2E-004 | dev-ticket-manager | Todo |
+
+#### Phase 2: エディターテスト実装（Week 3-4）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-006 | ActionEditor基本操作テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-007 | ActionEditor高度機能テスト | EP-004 | 3 | High | TEST-E2E-006 | webapp-test-automation | Todo |
+| TEST-E2E-008 | ConditionEditor分岐ロジックテスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-009 | ConditionEditorUI操作テスト | EP-004 | 3 | High | TEST-E2E-008 | webapp-test-automation | Todo |
+| TEST-E2E-010 | LoopEditor繰り返し処理テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-011 | LoopEditorパフォーマンステスト | EP-004 | 3 | High | TEST-E2E-010 | webapp-test-automation | Todo |
+| TEST-E2E-012 | ParallelEditor並行処理テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-013 | ParallelEditor同期制御テスト | EP-004 | 3 | High | TEST-E2E-012 | webapp-test-automation | Todo |
+
+#### Phase 3: パフォーマンステスト（Week 5-6）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-014 | WebWorker並列処理テスト | EP-004 | 5 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-015 | 仮想スクロール性能テスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-016 | メモリリーク検出テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-017 | レンダリング最適化テスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-018 | 大規模データ処理テスト | EP-004 | 5 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+
+#### Phase 4: 統合・セキュリティテスト（Week 5-6）
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-E2E-019 | エディター間通信テスト | EP-004 | 5 | Critical | TEST-E2E-006,008,010,012 | webapp-test-automation | Todo |
+| TEST-E2E-020 | 状態管理統合テスト | EP-004 | 5 | Critical | TEST-E2E-019 | webapp-test-automation | Todo |
+| TEST-E2E-021 | モーダル連携テスト | EP-004 | 3 | High | TEST-E2E-019 | webapp-test-automation | Todo |
+| TEST-E2E-022 | エラーリカバリーテスト | EP-004 | 3 | High | TEST-E2E-020 | webapp-test-automation | Todo |
+| TEST-E2E-023 | API統合テスト | EP-004 | 5 | High | TEST-E2E-004 | webapp-test-automation | Todo |
+| TEST-E2E-024 | インジェクション攻撃防御テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-025 | XSS防御検証テスト | EP-004 | 5 | Critical | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-026 | CSRF対策検証テスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-027 | 入力検証セキュリティテスト | EP-004 | 3 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+| TEST-E2E-028 | 認証・認可テスト | EP-004 | 5 | High | TEST-E2E-001 | webapp-test-automation | Todo |
+
+**Sprint 2 E2Eテスト合計**: 111ポイント（28チケット）
+
+### 55のE2Eテストシナリオ内訳
+- **基本機能テスト**: 8シナリオ
+- **エディター機能テスト**: 7シナリオ  
+- **図表タイプテスト**: 6シナリオ
+- **インライン編集テスト**: 5シナリオ
+- **エラーハンドリングテスト**: 5シナリオ
+- **パフォーマンステスト**: 4シナリオ
+- **セキュリティテスト**: 4シナリオ
+- **アクセシビリティテスト**: 4シナリオ
+- **統合テスト**: 4シナリオ
+- **回帰テスト**: 3シナリオ
+- **ストレステスト**: 3シナリオ
+- **クロスブラウザテスト**: 2シナリオ
+
+## Sprint 3: テスト基盤構築（Week 5-6）
+
+### チケット一覧（詳細化版）
+
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-005-1 | テストフレームワーク設計 | EP-004 | 3 | Critical | - | webapp-test-automation | Todo |
+| TEST-005-2 | Page Object実装 | EP-004 | 5 | Critical | TEST-005-1 | webapp-test-automation | Todo |
+| TEST-005-3 | Component Object実装 | EP-004 | 3 | Critical | TEST-005-1 | webapp-test-automation | Todo |
+| TEST-005-4 | Flow Object実装 | EP-004 | 3 | Critical | TEST-005-1 | webapp-test-automation | Todo |
+| TEST-005-5 | テストデータ管理 | EP-004 | 3 | High | TEST-005-1 | webapp-test-automation | Todo |
+| TEST-005-6 | カスタムアサーション | EP-004 | 4 | High | TEST-005-2 | webapp-test-automation | Todo |
+| TEST-007 | Docker Swarm環境構築 | EP-004 | 5 | Critical | - | docker-dev-env-builder | Todo |
+| DEPLOY-001 | Docker環境構築 | EP-005 | 8 | High | - | docker-dev-env-builder | Todo |
+
+**Sprint 3 合計**: 26ポイント
+
+### 受け入れ条件（Sprint 3）
+- [ ] Hybrid Object Model実装完了
+- [ ] Docker Swarm環境構築完了
+- [ ] テストフレームワーク稼働確認
+- [ ] 基本的なPage/Component/Flow Objects実装
+
+## Sprint 4: テストシナリオ実装（Week 7-8）
 
 ### チケット一覧
 
 | ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
 |---|---|---|---|---|---|---|---|
-| TEST-005 | E2Eテストシナリオ作成 | EP-004 | 21 | Critical | 全CORE完了 | webapp-test-automation | Todo |
-| TEST-006 | クロスブラウザテスト | EP-004 | 13 | Critical | TEST-005 | webapp-test-automation | Todo |
-| TEST-007 | セキュリティペネトレーションテスト | EP-004 | 13 | Critical | 全SEC完了 | spec-implementation-auditor | Todo |
-| PERF-005 | 負荷テスト実施 | EP-003 | 8 | High | TEST-005 | webapp-test-automation | Todo |
-| PERF-006 | パフォーマンスチューニング | EP-003 | 13 | High | PERF-005 | web-debug-specialist | Todo |
-| DEPLOY-001 | Docker環境構築 | EP-005 | 13 | High | - | docker-dev-env-builder | Todo |
-| DEPLOY-002 | CI/CDパイプライン構築 | EP-005 | 8 | High | DEPLOY-001 | docker-dev-env-builder | Todo |
-| DEPLOY-003 | 本番環境設定 | EP-005 | 8 | High | DEPLOY-002 | docker-dev-env-builder | Todo |
-| DOC-002 | ユーザーマニュアル作成 | EP-005 | 8 | Medium | 全CORE完了 | software-doc-writer | Todo |
-| DOC-003 | 技術ドキュメント完成 | EP-005 | 8 | Medium | DOC-002 | software-doc-writer | Todo |
+| TEST-006-1 | ブラウザマトリックス定義 | EP-004 | 2 | Critical | - | webapp-test-automation | Todo |
+| TEST-006-2 | 並列実行環境構築 | EP-004 | 5 | Critical | TEST-007 | webapp-test-automation | Todo |
+| TEST-006-3 | ブラウザ固有テスト | EP-004 | 3 | Critical | TEST-006-2 | webapp-test-automation | Todo |
+| TEST-006-4 | レポート統合 | EP-004 | 3 | High | TEST-006-2 | webapp-test-automation | Todo |
+| TEST-008 | 基本変換フローテスト | EP-004 | 4 | Critical | TEST-005-2 | webapp-test-automation | Todo |
+| TEST-009 | 編集機能テスト | EP-004 | 5 | Critical | TEST-005-2 | webapp-test-automation | Todo |
+| TEST-010 | エクスポート機能テスト | EP-004 | 4 | Critical | TEST-005-2 | webapp-test-automation | Todo |
+| TEST-011 | 初回利用者フロー | EP-004 | 4 | High | TEST-005-4 | webapp-test-automation | Todo |
+| TEST-012 | パワーユーザーフロー | EP-004 | 5 | High | TEST-005-4 | webapp-test-automation | Todo |
+| TEST-013 | コラボレーションフロー | EP-004 | 4 | Medium | TEST-005-4 | webapp-test-automation | Todo |
+
+**Sprint 4 合計**: 39ポイント
+
+### 受け入れ条件（Sprint 4）
+- [ ] クリティカルパステスト10件実装
+- [ ] ユーザージャーニーテスト10件実装
+- [ ] 全ブラウザでの並列実行確認
+- [ ] テストカバレッジ80%以上
+
+## Sprint 5: 高度な機能とCI/CD統合（Week 9-10）
+
+### チケット一覧
+
+| ID | タイトル | エピック | 見積もり | 優先度 | 依存関係 | 担当エージェント | ステータス |
+|---|---|---|---|---|---|---|---|
+| TEST-014 | 入力検証エラーテスト | EP-004 | 4 | Critical | TEST-008 | webapp-test-automation | Todo |
+| TEST-015 | ネットワークエラーテスト | EP-004 | 5 | Critical | TEST-008 | webapp-test-automation | Todo |
+| TEST-016 | ブラウザ互換性エラー | EP-004 | 4 | High | TEST-006-3 | webapp-test-automation | Todo |
+| TEST-017 | GitHub Actions統合 | EP-004 | 8 | Critical | TEST-006-2 | webapp-test-automation/DevOps | Todo |
+| TEST-018 | Allureレポート設定 | EP-004 | 5 | High | TEST-017 | webapp-test-automation | Todo |
+| TEST-019 | Grafanaモニタリング | EP-004 | 5 | High | TEST-018 | webapp-test-automation | Todo |
+| TEST-020 | 負荷テスト実装 | EP-003 | 4 | High | TEST-008 | webapp-test-automation | Todo |
 | AUDIT-001 | 最終実装監査 | EP-004 | 8 | Critical | 全実装完了 | spec-implementation-auditor | Todo |
-| FIX-001 | バグ修正バッファ | EP-002 | 21 | High | AUDIT-001 | debugger | Todo |
-| REVIEW-001 | 最終コードレビュー | EP-004 | 8 | Critical | FIX-001 | code-reviewer | Todo |
+| REVIEW-001 | 最終コードレビュー | EP-004 | 8 | Critical | AUDIT-001 | code-reviewer | Todo |
 
-**Sprint 3 合計**: 150ポイント
+**Sprint 5 合計**: 51ポイント
 
-### 受け入れ条件（Sprint 3）
-- [ ] E2Eテスト成功率100%
-- [ ] 全ブラウザ（Chrome/Firefox/Safari/Edge）で動作確認
-- [ ] セキュリティ脆弱性0件
-- [ ] Docker環境で正常動作
-- [ ] CI/CDパイプライン稼働
-- [ ] 全ドキュメント完成
+### 受け入れ条件（Sprint 5）
+- [ ] エラーケーステスト12件実装
+- [ ] CI/CDパイプライン完全自動化
+- [ ] Allure Report + Grafana稼働
+- [ ] 全32テストシナリオ実装完了
+- [ ] E2Eテスト成功率95%以上
 
 ## 依存関係マップ
 
@@ -231,6 +338,35 @@ docker build -t plantuml-editor:v4.0 .
 # デプロイ
 docker-compose up -d
 ```
+
+## マイルストーン（更新版）
+
+| マイルストーン | 期日 | 達成条件 |
+|------------|------|---------|
+| M1: セキュリティ基盤完成 | Week 2 | Sprint 1完了、脆弱性0件 |
+| M2: コア機能実装完了 | Week 4 | Sprint 2完了、基本機能動作確認 |
+| M3: E2Eテスト基盤完成 | Week 6 | Sprint 3完了、テストフレームワーク稼働 |
+| M4: テストシナリオ実装完了 | Week 8 | Sprint 4完了、32件のテストシナリオ実装 |
+| M5: 本番リリース準備完了 | Week 10 | Sprint 5完了、全テスト合格、CI/CD稼働 |
+
+## E2Eテスト拡充サマリー
+
+### テストシナリオ（32件）
+- **クリティカルパス**: 10件（基本変換、インライン編集、エクスポート等）
+- **ユーザージャーニー**: 10件（初回利用、パワーユーザー、コラボレーション等）
+- **エラーケース**: 12件（入力検証、ネットワーク、ブラウザ互換性等）
+
+### アーキテクチャ
+- **Hybrid Object Model**: Page + Component + Flow Objects
+- **並列実行**: Docker Swarm（最大10並列）
+- **CI/CD**: GitHub Actions完全統合
+- **モニタリング**: Allure Report + Grafana
+
+### 総ストーリーポイント
+- Sprint 3: 26 SP（テスト基盤）
+- Sprint 4: 39 SP（シナリオ実装）
+- Sprint 5: 51 SP（高度な機能・CI/CD）
+- **合計**: 116 SP（E2Eテスト関連）
 
 ## 成功基準チェックリスト
 

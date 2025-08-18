@@ -1,0 +1,395 @@
+# Docker Swarm テスト環境設定
+# 5ノード並列実行、リソース最適化、負荷分散対応
+# PlantUML Editor Proto - TEST-007 実装
+
+version: '3.9'
+
+services:
+  # テストランナー（メインサービス）
+  test-runner:
+    image: plantuml-test-runner:latest
+    build:
+      context: ../../..
+      dockerfile: tests/framework/swarm/Dockerfile.test-runner
+      args:
+        NODE_VERSION: "20.18.0"
+        PLAYWRIGHT_VERSION: "1.48.0"
+    deploy:
+      replicas: 5
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.role == worker
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 2
+        delay: 30s
+        failure_action: rollback
+        monitor: 60s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=test
+      - TEST_MODE=swarm
+      - SWARM_NODE_ID={{.Node.ID}}
+      - SWARM_SERVICE_ID={{.Service.ID}}
+      - SWARM_TASK_ID={{.Task.ID}}
+      - PLAYWRIGHT_BROWSERS_PATH=/opt/playwright/browsers
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+      - TEST_PARALLEL_WORKERS=5
+      - TEST_TIMEOUT=300000
+      - TEST_RETRIES=3
+      - REPORT_AGGREGATION=true
+    volumes:
+      - test-results:/app/test-results
+      - test-coverage:/app/coverage
+      - browser-cache:/opt/playwright/browsers
+    networks:
+      - test-network
+    working_dir: /app
+    command: ["node", "tests/framework/swarm/orchestrator.js"]
+    healthcheck:
+      test: ["CMD", "node", "tests/framework/swarm/health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # テスト結果集約サービス
+  result-aggregator:
+    image: plantuml-result-aggregator:latest
+    build:
+      context: ../../..
+      dockerfile: tests/framework/swarm/Dockerfile.aggregator
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+    environment:
+      - AGGREGATION_MODE=realtime
+      - RESULT_FORMAT=json
+      - EXPORT_FORMATS=html,xml,csv
+      - METRICS_COLLECTION=enabled
+    volumes:
+      - test-results:/app/results
+      - test-reports:/app/reports
+      - test-coverage:/app/coverage
+    networks:
+      - test-network
+    ports:
+      - "8087:8087"
+    command: ["node", "tests/framework/swarm/reporter.js"]
+
+  # アプリケーションサーバー（テスト対象）
+  app-server:
+    image: plantuml-editor-test:latest
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 2
+      placement:
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+    environment:
+      - NODE_ENV=test
+      - PORT=8086
+      - TEST_MODE=swarm
+    volumes:
+      - app-logs:/app/logs
+    networks:
+      - test-network
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Redis（テスト結果キャッシュ）
+  redis-cache:
+    image: redis:7-alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+    volumes:
+      - redis-data:/data
+    networks:
+      - test-network
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "100mb", "--maxmemory-policy", "allkeys-lru"]
+
+  # Prometheus（メトリクス収集）
+  prometheus:
+    image: prom/prometheus:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    volumes:
+      - prometheus-config:/etc/prometheus
+      - prometheus-data:/prometheus
+    networks:
+      - test-network
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=1h'
+      - '--web.enable-lifecycle'
+
+  # Grafana（可視化）
+  grafana:
+    image: grafana/grafana:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 256M
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=testpass123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - grafana-config:/etc/grafana
+    networks:
+      - test-network
+    ports:
+      - "3000:3000"
+
+  # ログ集約（ELK Stack）
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - test-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
+    volumes:
+      - logstash-config:/usr/share/logstash/pipeline
+    networks:
+      - test-network
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 512M
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - test-network
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  # 負荷バランサー
+  nginx-lb:
+    image: nginx:alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+    volumes:
+      - nginx-config:/etc/nginx/conf.d
+    networks:
+      - test-network
+    ports:
+      - "80:80"
+      - "443:443"
+
+networks:
+  test-network:
+    driver: overlay
+    driver_opts:
+      encrypted: "true"
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.1.0/24
+
+volumes:
+  # テスト結果
+  test-results:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=1g,uid=1000
+
+  test-reports:
+    driver: local
+
+  test-coverage:
+    driver: local
+
+  # アプリケーション
+  app-logs:
+    driver: local
+
+  # ブラウザキャッシュ
+  browser-cache:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=2g,uid=1000
+
+  # データベース
+  redis-data:
+    driver: local
+
+  # 監視
+  prometheus-config:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  grafana-config:
+    driver: local
+
+  # ログ
+  elasticsearch-data:
+    driver: local
+  logstash-config:
+    driver: local
+
+  # Nginx
+  nginx-config:
+    driver: local
+
+# Swarm固有設定
+configs:
+  prometheus-config:
+    file: ./config/prometheus.yml
+  grafana-datasources:
+    file: ./config/grafana-datasources.yml
+  grafana-dashboards:
+    file: ./config/grafana-dashboards.yml
+  nginx-config:
+    file: ./config/nginx.conf
+  logstash-pipeline:
+    file: ./config/logstash.conf
+
+secrets:
+  test-env:
+    external: true
+  grafana-admin:
+    external: true
+
+# Swarm Labels
+x-labels: &default-labels
+  com.plantuml.test.environment: "swarm"
+  com.plantuml.test.version: "3.0"
+  com.plantuml.test.component: "test-framework"
+
+# デフォルト設定
+x-defaults: &default-settings
+  labels: *default-labels
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# 共通環境変数
+x-common-env: &common-env
+  TZ: Asia/Tokyo
+  DEBUG: "test:*"
+  LOG_LEVEL: info
+  METRICS_ENABLED: "true"

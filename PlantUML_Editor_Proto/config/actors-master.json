@@ -1,0 +1,272 @@
+{
+  "version": "1.0.0",
+  "description": "PlantUMLエディター用アクターマスタ定義",
+  "lastUpdated": "2025-08-18",
+  "categories": {
+    "business": {
+      "name": "ビジネス",
+      "description": "ビジネス関連のアクター",
+      "actors": [
+        {
+          "id": "customer",
+          "name": "顧客",
+          "icon": "👤",
+          "description": "エンドユーザー、お客様",
+          "aliases": ["ユーザー", "利用者", "エンドユーザー"],
+          "color": "#3498db",
+          "defaultSelected": false
+        },
+        {
+          "id": "manager",
+          "name": "管理者",
+          "icon": "👨‍💼",
+          "description": "システム管理者、運用管理者",
+          "aliases": ["アドミン", "Admin"],
+          "color": "#e74c3c",
+          "defaultSelected": false
+        },
+        {
+          "id": "operator",
+          "name": "オペレーター",
+          "icon": "👩‍💻",
+          "description": "カスタマーサポート、問い合わせ対応",
+          "aliases": ["サポート", "CS"],
+          "color": "#9b59b6",
+          "defaultSelected": false
+        },
+        {
+          "id": "supplier",
+          "name": "サプライヤー",
+          "icon": "🏭",
+          "description": "商品・サービス提供者",
+          "aliases": ["仕入先", "ベンダー"],
+          "color": "#34495e",
+          "defaultSelected": false
+        }
+      ]
+    },
+    "system": {
+      "name": "システム",
+      "description": "システム・サービス関連のアクター",
+      "actors": [
+        {
+          "id": "system",
+          "name": "システム",
+          "icon": "💻",
+          "description": "アプリケーションシステム",
+          "aliases": ["アプリ", "App"],
+          "color": "#2ecc71",
+          "defaultSelected": true
+        },
+        {
+          "id": "database",
+          "name": "データベース",
+          "icon": "🗄️",
+          "description": "データベースシステム",
+          "aliases": ["DB", "ストレージ"],
+          "color": "#16a085",
+          "defaultSelected": true
+        },
+        {
+          "id": "api",
+          "name": "外部API",
+          "icon": "🔌",
+          "description": "外部連携API、サードパーティサービス",
+          "aliases": ["WebAPI", "REST API"],
+          "color": "#f39c12",
+          "defaultSelected": false
+        },
+        {
+          "id": "cache",
+          "name": "キャッシュ",
+          "icon": "⚡",
+          "description": "キャッシュサーバー、Redis等",
+          "aliases": ["Redis", "Memcached"],
+          "color": "#e67e22",
+          "defaultSelected": false
+        },
+        {
+          "id": "queue",
+          "name": "キュー",
+          "icon": "📬",
+          "description": "メッセージキュー、非同期処理",
+          "aliases": ["MQ", "メッセージキュー"],
+          "color": "#8e44ad",
+          "defaultSelected": false
+        }
+      ]
+    },
+    "ecommerce": {
+      "name": "EC・決済",
+      "description": "ECサイト・決済関連のアクター",
+      "actors": [
+        {
+          "id": "ecsite",
+          "name": "ECサイト",
+          "icon": "🛒",
+          "description": "オンラインショッピングサイト",
+          "aliases": ["ショップ", "ストア"],
+          "color": "#3498db",
+          "defaultSelected": true
+        },
+        {
+          "id": "inventory",
+          "name": "在庫システム",
+          "icon": "📦",
+          "description": "在庫管理システム",
+          "aliases": ["在庫管理", "WMS"],
+          "color": "#95a5a6",
+          "defaultSelected": true
+        },
+        {
+          "id": "payment",
+          "name": "決済サービス",
+          "icon": "💳",
+          "description": "決済処理サービス",
+          "aliases": ["決済", "Payment"],
+          "color": "#9b59b6",
+          "defaultSelected": true
+        },
+        {
+          "id": "delivery",
+          "name": "配送業者",
+          "icon": "🚚",
+          "description": "配送・物流サービス",
+          "aliases": ["物流", "配送"],
+          "color": "#e74c3c",
+          "defaultSelected": true
+        }
+      ]
+    },
+    "auth": {
+      "name": "認証・セキュリティ",
+      "description": "認証・セキュリティ関連のアクター",
+      "actors": [
+        {
+          "id": "auth_service",
+          "name": "認証サービス",
+          "icon": "🔐",
+          "description": "認証・認可サービス",
+          "aliases": ["Auth", "IdP"],
+          "color": "#e74c3c",
+          "defaultSelected": false
+        },
+        {
+          "id": "sso",
+          "name": "SSO",
+          "icon": "🔑",
+          "description": "シングルサインオンサービス",
+          "aliases": ["SAML", "OAuth"],
+          "color": "#f39c12",
+          "defaultSelected": false
+        },
+        {
+          "id": "firewall",
+          "name": "ファイアウォール",
+          "icon": "🛡️",
+          "description": "セキュリティゲートウェイ",
+          "aliases": ["WAF", "FW"],
+          "color": "#34495e",
+          "defaultSelected": false
+        }
+      ]
+    },
+    "notification": {
+      "name": "通知・メッセージング",
+      "description": "通知・メッセージング関連のアクター",
+      "actors": [
+        {
+          "id": "mail_service",
+          "name": "メールサービス",
+          "icon": "📧",
+          "description": "メール送信サービス",
+          "aliases": ["SMTP", "SendGrid"],
+          "color": "#3498db",
+          "defaultSelected": false
+        },
+        {
+          "id": "push_service",
+          "name": "プッシュ通知",
+          "icon": "📱",
+          "description": "モバイルプッシュ通知サービス",
+          "aliases": ["FCM", "APNS"],
+          "color": "#2ecc71",
+          "defaultSelected": false
+        },
+        {
+          "id": "sms_service",
+          "name": "SMS",
+          "icon": "💬",
+          "description": "SMS送信サービス",
+          "aliases": ["Twilio", "SMS"],
+          "color": "#9b59b6",
+          "defaultSelected": false
+        },
+        {
+          "id": "chat_service",
+          "name": "チャット",
+          "icon": "💭",
+          "description": "チャットサービス、Slack等",
+          "aliases": ["Slack", "Teams"],
+          "color": "#16a085",
+          "defaultSelected": false
+        }
+      ]
+    },
+    "monitoring": {
+      "name": "監視・分析",
+      "description": "監視・分析関連のアクター",
+      "actors": [
+        {
+          "id": "monitor",
+          "name": "監視システム",
+          "icon": "📊",
+          "description": "システム監視サービス",
+          "aliases": ["Monitoring", "APM"],
+          "color": "#e74c3c",
+          "defaultSelected": false
+        },
+        {
+          "id": "logger",
+          "name": "ログ収集",
+          "icon": "📝",
+          "description": "ログ収集・分析サービス",
+          "aliases": ["Logging", "ELK"],
+          "color": "#f39c12",
+          "defaultSelected": false
+        },
+        {
+          "id": "analytics",
+          "name": "分析サービス",
+          "icon": "📈",
+          "description": "データ分析サービス",
+          "aliases": ["Analytics", "GA"],
+          "color": "#3498db",
+          "defaultSelected": false
+        }
+      ]
+    }
+  },
+  "defaultActors": [
+    "customer",
+    "system",
+    "database",
+    "ecsite",
+    "inventory",
+    "payment",
+    "delivery"
+  ],
+  "customActors": {
+    "enabled": true,
+    "maxCount": 20,
+    "defaultIcon": "👤",
+    "defaultColor": "#95a5a6"
+  },
+  "display": {
+    "itemsPerRow": 3,
+    "showCategories": true,
+    "showDescriptions": false,
+    "enableSearch": true,
+    "enableFiltering": true
+  }
+}

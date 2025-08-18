@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>draw.io Export Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #666;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔷 draw.io エクスポート機能テスト</h1>
+        
+        <div class="test-section">
+            <h3>PlantUMLコード入力</h3>
+            <textarea id="plantuml-code" placeholder="PlantUMLコードを入力してください">@startuml
+actor ユーザー
+participant "Webアプリ" as web
+database "データベース" as db
+
+ユーザー -> web: ログイン要求
+web -> db: 認証情報照会
+db --> web: 認証結果
+web --> ユーザー: ログイン結果
+
+ユーザー -> web: データ取得要求
+web -> db: データ検索
+db --> web: 検索結果
+web --> ユーザー: データ表示
+@enduml</textarea>
+            
+            <button onclick="exportToDrawIO()">🔷 draw.ioで開く</button>
+            <button onclick="exportWithCompression()">📦 圧縮版で開く</button>
+            <button onclick="exportSimple()">📋 シンプル版で開く</button>
+            <button onclick="copyToClipboard()">📝 コードをコピー</button>
+            
+            <div id="status" class="status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>テスト手順</h3>
+            <ol>
+                <li>上記のテキストエリアにPlantUMLコードを入力</li>
+                <li>「draw.ioで開く」ボタンをクリック</li>
+                <li>新しいタブでdraw.ioが開き、ダイアグラムが表示されることを確認</li>
+                <li>draw.io内で「Arrange → Insert → Advanced → PlantUML」でもインポート可能</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>エクスポート方法の違い</h3>
+            <ul>
+                <li><strong>標準版</strong>: PlantUML Encoderライブラリを使用（推奨）</li>
+                <li><strong>圧縮版</strong>: Pako圧縮を使用（URLが短い）</li>
+                <li><strong>シンプル版</strong>: Base64のみ（互換性重視）</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ライブラリ読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plantuml-encoder@1.4.0/dist/plantuml-encoder.min.js"></script>
+    
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            setTimeout(() => {
+                statusDiv.className = 'status';
+            }, 5000);
+        }
+        
+        // 標準的なエクスポート（PlantUML Encoder使用）
+        function exportToDrawIO() {
+            const plantUmlCode = document.getElementById('plantuml-code').value;
+            
+            if (!plantUmlCode || plantUmlCode.trim() === '') {
+                showStatus('PlantUMLコードを入力してください', 'error');
+                return;
+            }
+            
+            try {
+                // PlantUML Encoderライブラリを使用
+                const encoded = plantumlEncoder.encode(plantUmlCode);
+                const plantUmlServerUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+                
+                // draw.ioで開く
+                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark&title=PlantUML.drawio#U${encodeURIComponent(plantUmlServerUrl)}`;
+                
+                window.open(drawioUrl, '_blank');
+                showStatus('draw.ioでPlantUMLダイアグラムを開きました', 'success');
+            } catch (error) {
+                console.error('エクスポートエラー:', error);
+                showStatus('エクスポートに失敗しました: ' + error.message, 'error');
+            }
+        }
+        
+        // 圧縮版エクスポート（Pako使用）
+        function exportWithCompression() {
+            const plantUmlCode = document.getElementById('plantuml-code').value;
+            
+            if (!plantUmlCode || plantUmlCode.trim() === '') {
+                showStatus('PlantUMLコードを入力してください', 'error');
+                return;
+            }
+            
+            try {
+                // Pakoで圧縮
+                const utf8 = new TextEncoder().encode(plantUmlCode);
+                const compressed = pako.deflate(utf8);
+                const base64 = btoa(String.fromCharCode.apply(null, compressed));
+                const encoded = base64.replace(/\+/g, '-').replace(/\//g, '_');
+                
+                const plantUmlServerUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark&title=PlantUML_Compressed.drawio#U${encodeURIComponent(plantUmlServerUrl)}`;
+                
+                window.open(drawioUrl, '_blank');
+                showStatus('圧縮版でdraw.ioを開きました', 'success');
+            } catch (error) {
+                console.error('圧縮エクスポートエラー:', error);
+                showStatus('圧縮エクスポートに失敗しました: ' + error.message, 'error');
+            }
+        }
+        
+        // シンプル版エクスポート（Base64のみ）
+        function exportSimple() {
+            const plantUmlCode = document.getElementById('plantuml-code').value;
+            
+            if (!plantUmlCode || plantUmlCode.trim() === '') {
+                showStatus('PlantUMLコードを入力してください', 'error');
+                return;
+            }
+            
+            try {
+                // シンプルなBase64エンコード
+                const encoded = btoa(unescape(encodeURIComponent(plantUmlCode)));
+                
+                // draw.ioを開く（手動インポート用）
+                const drawioUrl = `https://app.diagrams.net/?splash=0&ui=dark`;
+                
+                window.open(drawioUrl, '_blank');
+                
+                // クリップボードにコピー
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(plantUmlCode).then(() => {
+                        showStatus('draw.ioが開きました。「Arrange → Insert → Advanced → PlantUML」からコードをペーストしてください', 'info');
+                    });
+                } else {
+                    showStatus('draw.ioが開きました。PlantUMLコードを手動でインポートしてください', 'info');
+                }
+            } catch (error) {
+                console.error('シンプルエクスポートエラー:', error);
+                showStatus('シンプルエクスポートに失敗しました: ' + error.message, 'error');
+            }
+        }
+        
+        // クリップボードにコピー
+        function copyToClipboard() {
+            const plantUmlCode = document.getElementById('plantuml-code').value;
+            
+            if (!plantUmlCode || plantUmlCode.trim() === '') {
+                showStatus('コピーするコードがありません', 'error');
+                return;
+            }
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(plantUmlCode).then(() => {
+                    showStatus('PlantUMLコードをクリップボードにコピーしました', 'success');
+                }).catch(err => {
+                    showStatus('コピーに失敗しました: ' + err.message, 'error');
+                });
+            } else {
+                // フォールバック
+                const textarea = document.createElement('textarea');
+                textarea.value = plantUmlCode;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showStatus('PlantUMLコードをクリップボードにコピーしました', 'success');
+                } catch (err) {
+                    showStatus('コピーに失敗しました', 'error');
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+    </script>
+</body>
+</html>

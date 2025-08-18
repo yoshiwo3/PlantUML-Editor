@@ -3,9 +3,10 @@
  * 
  * EditModalManager関連のスタイル定義
  * 条件分岐・ループ・並行処理編集モーダル用
+ * インライン編集機能追加対応
  * 
- * @version 1.0.0
- * @date 2025-08-14
+ * @version 1.1.0
+ * @date 2025-08-17
  */
 
 /* ===============================
@@ -536,3 +537,157 @@ textarea.form-control {
 .gap-1 { gap: 8px; }
 .gap-2 { gap: 16px; }
 .gap-3 { gap: 24px; }
+
+/* ===============================
+   インライン編集機能用スタイル
+   =============================== */
+
+/* インライン編集可能なアクション項目 */
+.action-item-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    transition: all 0.2s;
+    font-size: 13px;
+}
+
+.action-item-inline:hover {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+/* ドラッグハンドル */
+.drag-handle {
+    color: #bdbdbd;
+    cursor: move;
+    font-size: 14px;
+    user-select: none;
+}
+
+/* アクター選択ドロップダウン */
+.actor-select-inline {
+    min-width: 60px;
+    max-width: 100px;
+    padding: 3px 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    font-size: 12px;
+    background: white;
+    cursor: pointer;
+}
+
+.actor-select-inline:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+/* 矢印タイプ選択 */
+.arrow-type-inline {
+    min-width: 45px;
+    padding: 3px 4px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    text-align: center;
+    font-weight: bold;
+    color: #424242;
+}
+
+.arrow-type-inline:focus {
+    outline: none;
+    border-color: #2196f3;
+}
+
+/* メッセージ入力フィールド */
+.message-input-inline {
+    flex: 1;
+    padding: 3px 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.message-input-inline:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+/* アクションボタン群 */
+.action-buttons-inline {
+    display: flex;
+    gap: 4px;
+}
+
+/* インラインボタン */
+.btn-inline {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #757575;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 12px;
+}
+
+.btn-inline:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+.btn-inline.delete:hover {
+    color: #f44336;
+    background: rgba(244, 67, 54, 0.1);
+}
+
+/* ？ボタン（条件確認） */
+.btn-inline.question {
+    color: #ff9800;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.btn-inline.question:hover {
+    color: #f57c00;
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.btn-inline.question.active {
+    background: #ff9800;
+    color: white;
+}
+
+/* アクション追加ボタン */
+.btn-add-action-inline {
+    width: 100%;
+    padding: 6px;
+    margin-top: 6px;
+    border: 1px dashed #2196f3;
+    background: rgba(33, 150, 243, 0.05);
+    color: #2196f3;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-add-action-inline:hover {
+    background: rgba(33, 150, 243, 0.1);
+    border-style: solid;
+}

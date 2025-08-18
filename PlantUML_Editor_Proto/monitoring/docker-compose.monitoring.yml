@@ -1,0 +1,397 @@
+# Docker Compose for Comprehensive Monitoring Stack
+# Grafana + Prometheus + InfluxDB + Elasticsearch + Allure + Load Testing
+
+version: '3.8'
+
+services:
+  # ====================
+  # Core Application
+  # ====================
+  plantuml-app:
+    image: node:20-alpine
+    container_name: plantuml-editor-monitored
+    working_dir: /app
+    volumes:
+      - ../:/app
+    ports:
+      - "8086:8086"
+    command: sh -c "npm install -g http-server && http-server -p 8086 -a 0.0.0.0"
+    networks:
+      - monitoring-network
+    environment:
+      - NODE_ENV=production
+      - ENABLE_METRICS=true
+      - PROMETHEUS_ENDPOINT=http://prometheus:9090
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8086"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "monitoring.enable=true"
+      - "monitoring.port=8086"
+
+  # ====================
+  # Metrics Collection
+  # ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-plantuml
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-alerts:/etc/prometheus/alerts
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Visualization
+  # ====================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-plantuml
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ../grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+      - GF_RENDERING_SERVER_URL=http://grafana-renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      - GF_LOG_FILTERS=rendering:debug
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - influxdb
+
+  grafana-renderer:
+    image: grafana/grafana-image-renderer:latest
+    container_name: grafana-renderer-plantuml
+    ports:
+      - "8081:8081"
+    environment:
+      - ENABLE_METRICS=true
+      - HTTP_PORT=8081
+    networks:
+      - monitoring-network
+
+  # ====================
+  # Time Series Database
+  # ====================
+  influxdb:
+    image: influxdb:2.0
+    container_name: influxdb-plantuml
+    ports:
+      - "8086:8086"  # Note: This conflicts with app port, consider changing
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=plantuml-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=e2e-metrics
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=plantuml-admin-token
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Log Management
+  # ====================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
+    container_name: elasticsearch-plantuml
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.0.0
+    container_name: kibana-plantuml
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana-plantuml
+    networks:
+      - monitoring-network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # ====================
+  # Log Collection
+  # ====================
+  loki:
+    image: grafana/loki:latest
+    container_name: loki-plantuml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail-plantuml
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring-network
+    depends_on:
+      - loki
+
+  # ====================
+  # Load Testing Tools
+  # ====================
+  k6:
+    image: grafana/k6:latest
+    container_name: k6-loadtest-plantuml
+    volumes:
+      - ../load-tests/k6:/scripts
+      - k6-results:/results
+    environment:
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    networks:
+      - monitoring-network
+    profiles:
+      - loadtest
+    command: ["sleep", "infinity"]  # Keep container running for manual test execution
+
+  artillery:
+    image: artilleryio/artillery:latest
+    container_name: artillery-loadtest-plantuml
+    volumes:
+      - ../load-tests/artillery:/scripts
+      - artillery-results:/results
+    networks:
+      - monitoring-network
+    profiles:
+      - loadtest
+    command: ["sleep", "infinity"]
+
+  locust-master:
+    image: locustio/locust:latest
+    container_name: locust-master-plantuml
+    ports:
+      - "8089:8089"
+    volumes:
+      - ../load-tests/locust:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --master -H http://plantuml-app:8086
+    networks:
+      - monitoring-network
+    profiles:
+      - loadtest
+
+  locust-worker:
+    image: locustio/locust:latest
+    volumes:
+      - ../load-tests/locust:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --worker --master-host locust-master
+    networks:
+      - monitoring-network
+    profiles:
+      - loadtest
+    deploy:
+      replicas: 4
+
+  # ====================
+  # Allure Report Server
+  # ====================
+  allure-server:
+    image: frankescobar/allure-docker-service
+    container_name: allure-server-plantuml
+    ports:
+      - "5050:5050"
+    environment:
+      - CHECK_RESULTS_EVERY_SECONDS=3
+      - KEEP_HISTORY=20
+      - KEEP_HISTORY_LATEST=10
+    volumes:
+      - ../allure-results:/app/allure-results
+      - ../allure-report:/app/default-reports
+      - allure-data:/app/allure-docker-api
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Alert Management
+  # ====================
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager-plantuml
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+      - '--web.route-prefix=/'
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Node Exporter (System Metrics)
+  # ====================
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter-plantuml
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # cAdvisor (Container Metrics)
+  # ====================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor-plantuml
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Jaeger (Distributed Tracing)
+  # ====================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger-plantuml
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Redis (Caching & Session)
+  # ====================
+  redis:
+    image: redis:alpine
+    container_name: redis-plantuml
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+
+  # ====================
+  # Nginx (Reverse Proxy)
+  # ====================
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-plantuml
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    networks:
+      - monitoring-network
+    depends_on:
+      - plantuml-app
+      - grafana
+      - allure-server
+    restart: unless-stopped
+
+# ====================
+# Networks
+# ====================
+networks:
+  monitoring-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ====================
+# Volumes
+# ====================
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  influxdb-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  loki-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  allure-data:
+    driver: local
+  k6-results:
+    driver: local
+  artillery-results:
+    driver: local
+  redis-data:
+    driver: local
