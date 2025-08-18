@@ -810,10 +810,9 @@ class PlantUMLEditor {
             });
         });
 
-        // カスタムアクター追加ボタン（非表示設定を追加）
+        // カスタムアクター追加ボタン
         const addCustomBtn = document.querySelector('.add-custom');
         if (addCustomBtn) {
-            addCustomBtn.style.display = 'none';  // ボタンを非表示にする
             addCustomBtn.addEventListener('click', () => {
                 this.showCustomActorModal();
             });

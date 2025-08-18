@@ -97,7 +97,9 @@
       "Bash(ls:*)",
       "Bash(git checkout:*)",
       "Bash(chmod:*)",
-      "mcp__playwright__browser_tab_new"
+      "mcp__playwright__browser_tab_new",
+      "Bash(git pull:*)",
+      "mcp__playwright__browser_navigate_forward"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
